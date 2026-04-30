@@ -357,14 +357,18 @@ function buildMsg(role, content, files = []) {
         img.loading = 'lazy';
         contentEl.appendChild(img);
       } else {
-        const chip = document.createElement('div');
-        chip.className = 'msg-file-chip';
 
-        if (f.type === 'binary') {
+         const chip = document.createElement('div');
+         chip.className = 'msg-file-chip';
+
+        if (f.type === 'table') {
+          chip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>${esc(f.name)} <span style="opacity:0.6">(${f.rows}r × ${f.cols}c)</span>`;
+        } else if (f.type === 'binary') {
           chip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg>${esc(f.name)}`;
         } else {
           chip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${esc(f.name)}`;
-        }
+      }
+        
 
         contentEl.appendChild(chip);
       }
@@ -415,12 +419,27 @@ async function sendMessage() {
 
   let apiContent = text;
 
-  if (files.length) {
+
+    if (files.length) {
     const txtFiles = files.filter(f => f.type === 'text');
     if (txtFiles.length) {
       apiContent += '\n\n' + txtFiles
         .map(f => `### File: ${f.name}\n\`\`\`\n${f.content.slice(0, 14000)}\n\`\`\``)
         .join('\n\n');
+    }
+
+    const tableFiles = files.filter(f => f.type === 'table');
+    if (tableFiles.length) {
+      apiContent += '\n\n' + tableFiles.map(f => {
+        const p = f.parsed;
+        return [
+          `### Data File: ${f.name}`,
+          p.summary,
+          '',
+          `**Preview (first ${Math.min(p.rowCount, 25)} of ${p.rowCount} rows):**`,
+          p.previewMarkdown
+        ].join('\n');
+      }).join('\n\n');
     }
 
     const binaryFiles = files.filter(f => f.type === 'binary');
@@ -435,6 +454,7 @@ async function sendMessage() {
       apiContent += '\n\n[User attached image(s): ' + imgFiles.map(f => f.name).join(', ') + ']';
     }
   }
+
 
   session.messages.push({ role: 'user', content: apiContent, files, displayContent: text });
 
@@ -578,44 +598,44 @@ async function addFiles(files) {
     if (file.type.startsWith('image/')) {
       const d = await readDataUrl(file);
       state.pendingFiles.push({
-        file,
-        name: file.name,
-        type: 'image',
-        dataUrl: d,
-        mime: file.type || 'image/png'
+        file, name: file.name, type: 'image', dataUrl: d, mime: file.type || 'image/png'
       });
-    } else if (TXT_EXT.includes(ext) || file.type === 'text/plain') {
+    }
+    else if (['.csv', '.xlsx', '.xls'].includes(ext)) {
+      showToast(`Parsing ${file.name}…`, '');
+      try {
+        const parsed = await window.AppFiles.parseStructuredFile(file);
+        state.pendingFiles.push({
+          file, name: file.name, type: 'table',
+          ext, parsed,
+          rows: parsed.rowCount, cols: parsed.colCount,
+          headers: parsed.headers
+        });
+        showToast(`${file.name} parsed — ${parsed.rowCount} rows × ${parsed.colCount} cols`, 'success');
+      } catch (e) {
+        showToast(`Could not parse ${file.name}: ${e.message}`, 'error');
+      }
+    }
+    else if (TXT_EXT.includes(ext) || file.type === 'text/plain') {
       const c = await readText(file);
+      state.pendingFiles.push({ file, name: file.name, type: 'text', content: c });
+    }
+    else if (BINARY_EXT.includes(ext)) {
       state.pendingFiles.push({
-        file,
-        name: file.name,
-        type: 'text',
-        content: c
+        file, name: file.name, type: 'binary', ext,
+        note: 'Binary file attached.'
       });
-    } else if (BINARY_EXT.includes(ext)) {
-      state.pendingFiles.push({
-        file,
-        name: file.name,
-        type: 'binary',
-        ext,
-        note: 'Binary file attached. Structured parsing will be added in the next step.'
-      });
-      showToast(`${file.name} attached — parser support comes in next step`, 'success');
-    } else {
+      showToast(`${file.name} attached`, 'success');
+    }
+    else {
       try {
         const c = await readText(file);
-        state.pendingFiles.push({
-          file,
-          name: file.name,
-          type: 'text',
-          content: c
-        });
+        state.pendingFiles.push({ file, name: file.name, type: 'text', content: c });
       } catch {
         showToast('Cannot read: ' + file.name, 'error');
       }
     }
   }
-
   renderFileStrip();
   updateSendBtn();
 }
@@ -639,6 +659,9 @@ function renderFileStrip() {
       img.src = f.dataUrl;
       img.alt = f.name;
       chip.appendChild(img);
+    } else if (f.type === 'table') {
+      chip.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>`;
+      chip.title = `${f.rows} rows × ${f.cols} cols`;
     } else if (f.type === 'binary') {
       chip.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg>`;
     } else {
