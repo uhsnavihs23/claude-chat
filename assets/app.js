@@ -420,7 +420,7 @@ async function sendMessage() {
   let apiContent = text;
 
 
-    if (files.length) {
+      if (files.length) {
     const txtFiles = files.filter(f => f.type === 'text');
     if (txtFiles.length) {
       apiContent += '\n\n' + txtFiles
@@ -454,7 +454,6 @@ async function sendMessage() {
       apiContent += '\n\n[User attached image(s): ' + imgFiles.map(f => f.name).join(', ') + ']';
     }
   }
-
 
   session.messages.push({ role: 'user', content: apiContent, files, displayContent: text });
 
@@ -717,11 +716,10 @@ exp.addEventListener('click', () => {
     showToast('Nothing to export', 'error');
     return;
   }
-
   const md = `# ${s.title}\n\n` + s.messages
     .map(m => `**${m.role === 'user' ? 'You' : 'AI'}:**\n\n${m.content}`)
     .join('\n\n---\n\n');
-
+  
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
   a.download = s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.md';
