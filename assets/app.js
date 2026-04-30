@@ -1,35 +1,74 @@
 // ═══ PROXY CONFIG ══════════════════════════════════════════
+// Set to your Cloudflare Worker URL. Leave "" for direct API (requires sidebar key).
 const PROXY_URL = "https://dark-feather-5042.insightfulscroll.workers.dev";
 
+// ═══ MODEL REGISTRY (slugs + capabilities + context limits) ═
 const MODEL_CAPS = {
-  'baidu/qianfan-ocr-fast:free':          { kind: 'ocr',        multimodal: true  },
-  'tencent/hy3-preview:free':             { kind: 'multimodal', multimodal: true  },
-  'minimax/minimax-m2.5:free':            { kind: 'text',       multimodal: false },
-  'nvidia/nemotron-nano-12b-v2-vl:free':  { kind: 'vision',     multimodal: true  },
-  'google/gemma-4-31b-it:free':           { kind: 'multimodal', multimodal: true  },
-  'google/gemma-4-26b-a4b-it:free':       { kind: 'multimodal', multimodal: true  },
-  'google/gemma-3-27b-it:free':           { kind: 'multimodal', multimodal: true  },
-  'google/gemma-3-12b-it:free':           { kind: 'multimodal', multimodal: true  },
-  'google/gemma-3-4b-it:free':            { kind: 'multimodal', multimodal: true  },
-  'google/gemma-3n-e4b-it:free':          { kind: 'multimodal', multimodal: true  },
-  'google/gemma-3n-e2b-it:free':          { kind: 'multimodal', multimodal: true  },
+  // Google Gemma
+  'google/gemma-4-31b-it:free':                    { kind: 'multimodal', multimodal: true,  ctx: 128000  },
+  'google/gemma-4-26b-a4b-it:free':                { kind: 'multimodal', multimodal: true,  ctx: 128000  },
+  'google/gemma-3-27b-it:free':                    { kind: 'multimodal', multimodal: true,  ctx: 131072  },
+  'google/gemma-3-12b-it:free':                    { kind: 'multimodal', multimodal: true,  ctx: 131072  },
+  'google/gemma-3-4b-it:free':                     { kind: 'multimodal', multimodal: true,  ctx: 131072  },
+  'google/gemma-3n-e4b-it:free':                   { kind: 'multimodal', multimodal: true,  ctx: 32768   },
+  'google/gemma-3n-e2b-it:free':                   { kind: 'multimodal', multimodal: true,  ctx: 32768   },
+  // NVIDIA
+  'nvidia/nemotron-3-super-120b-a12b:free':         { kind: 'text',       multimodal: false, ctx: 131072  },
+  'nvidia/nemotron-nano-12b-v2-vl:free':            { kind: 'vision',     multimodal: true,  ctx: 131072  },
+  'nvidia/nemotron-nano-9b-v2:free':                { kind: 'text',       multimodal: false, ctx: 131072  },
+  'nvidia/nemotron-3-nano-30b-a3b:free':            { kind: 'text',       multimodal: false, ctx: 131072  },
+  'nvidia/nemotron-3-nano-omni:free':               { kind: 'multimodal', multimodal: true,  ctx: 131072  },
+  'nvidia/llama-nemotron-embed-vl-1b-v2:free':      { kind: 'vision',     multimodal: true,  ctx: 8192    },
+  // Meta
+  'meta-llama/llama-3.3-70b-instruct:free':         { kind: 'text',       multimodal: false, ctx: 131072  },
+  'meta-llama/llama-3.2-3b-instruct:free':          { kind: 'text',       multimodal: false, ctx: 131072  },
+  // OpenAI
+  'openai/gpt-oss-120b:free':                       { kind: 'text',       multimodal: false, ctx: 131072  },
+  'openai/gpt-oss-20b:free':                        { kind: 'text',       multimodal: false, ctx: 131072  },
+  // Qwen
+  'qwen/qwen3-coder:free':                          { kind: 'text',       multimodal: false, ctx: 131072  },
+  'qwen/qwen3-80b-a3b-instruct:free':               { kind: 'text',       multimodal: false, ctx: 131072  },
+  // Baidu
+  'baidu/qianfan-ocr-fast:free':                    { kind: 'ocr',        multimodal: true,  ctx: 8192    },
+  // Tencent
+  'tencent/hy3-preview:free':                       { kind: 'multimodal', multimodal: true,  ctx: 32768   },
+  // MiniMax
+  'minimax/minimax-m2.5:free':                      { kind: 'text',       multimodal: false, ctx: 131072  },
+  // LiquidAI
+  'liquid/lfm2.5-1.2b-thinking:free':               { kind: 'text',       multimodal: false, ctx: 32768   },
+  'liquid/lfm2.5-1.2b-instruct:free':               { kind: 'text',       multimodal: false, ctx: 32768   },
+  // Poolside
+  'poolside/laguna-m1:free':                        { kind: 'text',       multimodal: false, ctx: 131072  },
+  'poolside/laguna-xs2:free':                       { kind: 'text',       multimodal: false, ctx: 32768   },
+  // Nous
+  'nousresearch/hermes-3-llama-3.1-405b:free':      { kind: 'text',       multimodal: false, ctx: 131072  },
+  // Venice
+  'venice-ai/venice-uncensored:free':               { kind: 'text',       multimodal: false, ctx: 32768   },
+  // Z.AI
+  'z-ai/glm-4.5-air:free':                          { kind: 'text',       multimodal: false, ctx: 131072  },
+  // InclusionAI
+  'inclusionai/ling-2.6-1t:free':                   { kind: 'text',       multimodal: false, ctx: 131072  },
 };
 
 function getSelectedModelMeta() {
-  return MODEL_CAPS[ms?.value] || { kind: 'text', multimodal: false };
+  return MODEL_CAPS[ms?.value] || { kind: 'text', multimodal: false, ctx: 128000 };
+}
+function getModelCtx() {
+  return (MODEL_CAPS[ms?.value]?.ctx) || 128000;
 }
 
 const OR_DIRECT = "https://openrouter.ai/api/v1/chat/completions";
-const CTX_LIMIT = 128000;
+// Context limits are per-model via getModelCtx() — see MODEL_CAPS
 
 // ═══ STATE ════════════════════════════════════════════════
 const state = {
-  sessions: [],
-  activeId: null,
-  isStreaming: false,
-  pendingFiles: [],
-  lastRespMs: null,
-  apiKey: ''
+  sessions:      [],
+  activeId:      null,
+  isStreaming:   false,
+  pendingFiles:  [],
+  lastRespMs:    null,
+  apiKey:        '',
+  searchEnabled: true
 };
 
 // ═══ DOM ══════════════════════════════════════════════════
@@ -76,9 +115,9 @@ function hasValidKey() {
 
 // ═══ THEME ════════════════════════════════════════════════
 (function () {
-  const btn = $('theme-toggle');
+  const btn  = $('theme-toggle');
   const root = document.documentElement;
-  let dark = root.getAttribute('data-theme') === 'dark' ||
+  let dark   = root.getAttribute('data-theme') === 'dark' ||
     (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const SUN  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
@@ -96,6 +135,17 @@ function hasValidKey() {
 // ═══ SIDEBAR TOGGLE ═══════════════════════════════════════
 stg.addEventListener('click', () => sid.classList.toggle('collapsed'));
 
+// ═══ SEARCH TOGGLE (Step 6) ═══════════════════════════════
+const stb = $('search-toggle-btn');
+if (stb) {
+  stb.addEventListener('click', () => {
+    state.searchEnabled = !state.searchEnabled;
+    stb.setAttribute('aria-pressed', state.searchEnabled ? 'true' : 'false');
+    stb.title = `Web search: ${state.searchEnabled ? 'ON' : 'OFF'}`;
+    showToast(`Web search ${state.searchEnabled ? 'enabled 🌐' : 'disabled'}`, state.searchEnabled ? 'success' : '');
+  });
+}
+
 // ═══ KEY FIELD SETUP ══════════════════════════════════════
 function setupKeyField() {
   const keyRow = $('key-row');
@@ -103,14 +153,14 @@ function setupKeyField() {
   if (isProxyMode()) {
     keyRow.hidden = true;
     kst.textContent = '🔒 Key secured via server proxy';
-    kst.className = 'key-status ok';
+    kst.className   = 'key-status ok';
     return;
   }
   if (window.APP_CONFIG?.OPENROUTER_API_KEY) {
-    aki.value = '••••••••••••••••';
+    aki.value       = '••••••••••••••••';
     kst.textContent = '✓ Key loaded from config.js';
-    kst.className = 'key-status ok';
-    aki.disabled = true;
+    kst.className   = 'key-status ok';
+    aki.disabled    = true;
   }
 }
 
@@ -123,12 +173,13 @@ aki.addEventListener('input', () => {
   } else {
     kst.textContent = 'Key should start with sk-or-'; kst.className = 'key-status err';
   }
-  updateSendBtn(); renderMessages();
+  updateSendBtn();
+  renderMessages();
 });
 
 kvb.addEventListener('click', () => {
   const show = aki.type === 'password';
-  aki.type = show ? 'text' : 'password';
+  aki.type   = show ? 'text' : 'password';
   kvb.innerHTML = show
     ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
     : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -137,7 +188,7 @@ kvb.addEventListener('click', () => {
 // ═══ SESSIONS ════════════════════════════════════════════
 function createSession() {
   const id = Date.now().toString(36);
-  const s = { id, title: 'New Chat', messages: [], tokenEst: 0, charCount: 0 };
+  const s  = { id, title: 'New Chat', messages: [], tokenEst: 0, charCount: 0 };
   state.sessions.unshift(s);
   state.activeId = id;
   return s;
@@ -167,65 +218,177 @@ function renderHistory() {
 function fmtNum(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
 
 function updateStats() {
-  const s = getSession();
-  smg.textContent = s.messages.length;
-  sch.textContent  = fmtNum(s.charCount || 0);
-  stk.textContent  = fmtNum(s.tokenEst  || 0);
-  stm.textContent  = state.lastRespMs != null ? state.lastRespMs + 's' : '—';
+  const s      = getSession();
+  const ctxMax = getModelCtx();
 
-  const pct = Math.min(((s.tokenEst || 0) / CTX_LIMIT) * 100, 100);
+  smg.textContent = s.messages.length;
+  sch.textContent = fmtNum(s.charCount || 0);
+  stk.textContent = fmtNum(s.tokenEst  || 0);
+  stm.textContent = state.lastRespMs != null ? state.lastRespMs + 's' : '—';
+
+  const pct = Math.min(((s.tokenEst || 0) / ctxMax) * 100, 100);
   tb.style.width = pct + '%';
+
   if (pct > 80)      tb.style.background = 'linear-gradient(90deg,#f59e0b,#ef4444)';
   else if (pct > 50) tb.style.background = 'linear-gradient(90deg,var(--ac),#f59e0b)';
   else               tb.style.background = 'linear-gradient(90deg,var(--ac),#06b6d4)';
 
-  tbl.textContent = `${fmtNum(s.tokenEst || 0)} / 128k ctx`;
+  tbl.textContent = `${fmtNum(s.tokenEst || 0)} / ${fmtNum(ctxMax)} ctx`;
   tbt.textContent = s.title;
+
   const modelLabel = ms.options[ms.selectedIndex]?.text || '';
-  tbm.textContent = modelLabel.replace(' ⭐', '').replace('(free)', '').trim();
+  tbm.textContent  = modelLabel.replace(' ⭐', '').replace('(free)', '').trim();
 }
 ms.addEventListener('change', updateStats);
 
-// ═══ MARKDOWN ════════════════════════════════════════════
+// ═══ MARKDOWN (Step 7 — full GFM renderer) ═══════════════
+
 function esc(s) {
-  return s
+  return String(s)
     .replace(/&/g,  '&amp;')
     .replace(/</g,  '&lt;')
     .replace(/>/g,  '&gt;')
     .replace(/"/g,  '&quot;');
 }
 
+// Inline markdown — safe to call inside table cells and paragraphs
+function inlineMd(s) {
+  if (!s) return '';
+  s = String(s)
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;');
+  s = s.replace(/`([^`\n]+)`/g,        (_, c) => `<code>${c}</code>`);
+  s = s.replace(/~~(.+?)~~/g,           '<del>$1</del>');
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g,  '<strong><em>$1</em></strong>');
+  s = s.replace(/___(.+?)___/g,         '<strong><em>$1</em></strong>');
+  s = s.replace(/\*\*(.+?)\*\*/g,      '<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/g,           '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g,           '<em>$1</em>');
+  s = s.replace(/_([^_\n]+)_/g,         '<em>$1</em>');
+  s = s.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+  s = s.replace(
+    /(^|\s)(https?:\/\/[^\s<>"']+)/g,
+    '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>'
+  );
+  return s;
+}
+
 function renderMd(raw) {
+  if (!raw) return '';
+
+  // 1. Protect fenced code blocks
   const blocks = [];
   let text = raw.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
     const i  = blocks.length;
     const id = `cb_${Date.now()}_${i}`;
-    blocks.push({ lang: lang || 'code', code: code.trim(), id });
+    blocks.push({ kind: 'code', lang: lang || 'code', code: code.trim(), id });
     return `\x00BLK${i}\x00`;
   });
 
-  text = text.replace(/`([^`\n]+)`/g,         (_, c) => `<code>${esc(c)}</code>`);
-  text = text.replace(/\*\*\*(.+?)\*\*\*/g,   '<strong><em>$1</em></strong>');
-  text = text.replace(/\*\*(.+?)\*\*/g,        '<strong>$1</strong>');
-  text = text.replace(/\*(.+?)\*/g,            '<em>$1</em>');
-  text = text.replace(/^### (.+)$/gm,          '<h3>$1</h3>');
-  text = text.replace(/^## (.+)$/gm,           '<h2>$1</h2>');
-  text = text.replace(/^# (.+)$/gm,            '<h1>$1</h1>');
-  text = text.replace(/^&gt; (.+)$/gm,         '<blockquote>$1</blockquote>');
-  text = text.replace(/^---$/gm,               '<hr>');
-  text = text.replace(/^(\s*[-*+] .+)/gm,      l => `<li>${l.replace(/^\s*[-*+] /, '')}</li>`);
-  text = text.replace(/(<li>[\s\S]+?<\/li>)/g, '<ul>$1</ul>');
+  // 2. GFM tables (extract before line processing)
+  text = text.replace(
+    /^(\|.+\|\s*\n)((?:\|[-:| ]+\|\s*\n))((?:\|.+\|\s*\n?)*)/gm,
+    (_, headerLine, sepLine, bodyLines) => {
+      const parseRow = row =>
+        row.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
 
+      const headers = parseRow(headerLine);
+      const seps    = parseRow(sepLine);
+      const rows    = bodyLines.trim()
+        ? bodyLines.trim().split('\n').map(parseRow)
+        : [];
+
+      const aligns = seps.map(s => {
+        if (/^:-+:$/.test(s)) return 'center';
+        if (/^-+:$/.test(s))  return 'right';
+        return 'left';
+      });
+
+      const th = headers.map((h, i) =>
+        `<th style="text-align:${aligns[i] || 'left'}">${inlineMd(h)}</th>`
+      ).join('');
+
+      const trs = rows.map(cells =>
+        '<tr>' + headers.map((_, i) =>
+          `<td style="text-align:${aligns[i] || 'left'}">${inlineMd(cells[i] ?? '')}</td>`
+        ).join('') + '</tr>'
+      ).join('');
+
+      const i = blocks.length;
+      blocks.push({
+        kind: 'table',
+        html: `<div class="md-table-wrap"><table class="md-table"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>`
+      });
+      return `\x00BLK${i}\x00`;
+    }
+  );
+
+  // 3. Block elements
+  text = text.replace(/^#{6} (.+)$/gm, '<h6>$1</h6>');
+  text = text.replace(/^#{5} (.+)$/gm, '<h5>$1</h5>');
+  text = text.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  text = text.replace(/^### (.+)$/gm,  '<h3>$1</h3>');
+  text = text.replace(/^## (.+)$/gm,   '<h2>$1</h2>');
+  text = text.replace(/^# (.+)$/gm,    '<h1>$1</h1>');
+  text = text.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  text = text.replace(/^---$/gm,       '<hr>');
+
+  // Task list items (before regular lists)
+  text = text.replace(
+    /^(\s*[-*+]) \[( |x|X)\] (.+)$/gm,
+    (_, _b, checked, label) => {
+      const chk = checked.toLowerCase() === 'x' ? 'checked' : '';
+      return `<li class="task-item"><input type="checkbox" disabled ${chk}> ${inlineMd(label)}</li>`;
+    }
+  );
+
+  // Unordered lists
+  text = text.replace(
+    /^(\s*[-*+] .+(?:\n(?!\s*\d+\. )(?!\s*[-*+] ).+)*)/gm,
+    block => {
+      const items = block.split('\n').filter(Boolean).map(l => {
+        const m = l.match(/^\s*[-*+] (.+)/);
+        return m ? `<li>${inlineMd(m[1])}</li>` : `<li>${inlineMd(l.trim())}</li>`;
+      }).join('');
+      return `<ul>${items}</ul>`;
+    }
+  );
+
+  // Ordered lists
+  text = text.replace(
+    /^(\s*\d+\. .+(?:\n(?!\s*[-*+] ).+)*)/gm,
+    block => {
+      const items = block.split('\n').filter(Boolean).map(l => {
+        const m = l.match(/^\s*\d+\. (.+)/);
+        return m ? `<li>${inlineMd(m[1])}</li>` : `<li>${inlineMd(l.trim())}</li>`;
+      }).join('');
+      return `<ol>${items}</ol>`;
+    }
+  );
+
+  // 4. Paragraph wrapping
   text = text.split(/\n{2,}/).map(b => {
     b = b.trim();
     if (!b) return '';
-    if (/^\x00BLK/.test(b) || /^<(h[1-3]|ul|ol|li|hr|blockquote)/.test(b)) return b;
-    return `<p>${b.replace(/\n/g, '<br>')}</p>`;
+    if (/^\x00BLK/.test(b)) return b;
+    if (/^<(h[1-6]|ul|ol|li|hr|blockquote|div|pre)/.test(b)) return b;
+    return `<p>${inlineMd(b.replace(/\n/g, '<br>'))}</p>`;
   }).join('');
 
-  blocks.forEach(({ lang, code, id }, i) => {
-    const btn  = `<button class="copy-code-btn" data-target="${id}">Copy</button>`;
-    const html = `<pre><div class="code-header"><span class="code-lang">${lang}</span>${btn}</div><code id="${id}">${esc(code)}</code></pre>`;
+  // 5. Restore blocks
+  blocks.forEach((blk, i) => {
+    let html;
+    if (blk.kind === 'code') {
+      const btn = `<button class="copy-code-btn" data-target="${blk.id}">Copy</button>`;
+      html = `<pre><div class="code-header"><span class="code-lang">${blk.lang}</span>${btn}</div><code id="${blk.id}">${esc(blk.code)}</code></pre>`;
+    } else {
+      html = blk.html;
+    }
     text = text.replace(`\x00BLK${i}\x00`, html);
   });
 
@@ -373,15 +536,15 @@ async function sendMessage() {
   state.pendingFiles = [];
   renderFileStrip();
 
-  // ── Hoist model here so it's available to imgFiles check below ──
+  // Hoist model here so it is available to imgFiles check below
   const model     = ms.value;
   const modelMeta = getSelectedModelMeta();
 
-  // ── Web search injection ────────────────────────────────────────
+  // ── Web search injection (Step 2 + Step 6 toggle) ──────────────
   let apiContent  = text;
   let searchedWeb = false;
 
-  if (window.AppSearch && isProxyMode()) {
+  if (window.AppSearch && isProxyMode() && state.searchEnabled) {
     showToast('🔍 Checking if web search needed…', '');
     const { contextBlock, searched, source } = await window.AppSearch.prepareContext(text);
     if (searched && contextBlock) {
@@ -393,7 +556,7 @@ async function sendMessage() {
     }
   }
 
-  // ── Append file content to apiContent ──────────────────────────
+  // ── Append file content ─────────────────────────────────────────
   if (files.length) {
     const txtFiles = files.filter(f => f.type === 'text');
     if (txtFiles.length) {
@@ -423,7 +586,7 @@ async function sendMessage() {
         .join('\n');
     }
 
-    // Only append image text note for text-only models;
+    // Only append text note for non-multimodal models;
     // vision/OCR models get real base64 payloads via AppOCR below
     const imgFiles = files.filter(f => f.type === 'image');
     if (imgFiles.length && window.AppOCR && !window.AppOCR.isMultimodal(model)) {
@@ -462,7 +625,7 @@ async function sendMessage() {
     if (sys) apiMessages.push({ role: 'system', content: sys });
     session.messages.forEach(m => apiMessages.push({ role: m.role, content: m.content }));
 
-    // Inject real image payloads for vision/OCR models
+    // Inject real image payloads for vision/OCR models (Step 3)
     const { messages: finalMessages } = window.AppOCR
       ? window.AppOCR.preparePayload(model, apiMessages, files, text)
       : { messages: apiMessages };
@@ -516,7 +679,7 @@ async function sendMessage() {
     session.tokenEst  = Math.round(chars / 4);
     updateStats();
 
-    // ── 🌐 web badge — placed right after updateStats() ────────────
+    // ── 🌐 web badge (Step 6) ──────────────────────────────────────
     if (searchedWeb) {
       const lastMeta = mw.querySelector('.msg.assistant:last-child .msg-meta');
       if (lastMeta) {
@@ -539,7 +702,7 @@ async function sendMessage() {
   }
 }
 
-// ═══ FILES ════════════════════════════════════════════════
+// ═══ FILES (Step 4) ═══════════════════════════════════════
 const TXT_EXT = [
   '.txt','.md','.json','.py','.js','.ts','.html','.css','.xml',
   '.yaml','.yml','.sh','.sql','.jsx','.tsx','.vue','.rs','.go',
@@ -587,21 +750,28 @@ async function addFiles(files) {
       try {
         const c = await readText(file);
         state.pendingFiles.push({ file, name: file.name, type: 'text', content: c });
-      } catch { showToast('Cannot read: ' + file.name, 'error'); }
+      } catch {
+        showToast('Cannot read: ' + file.name, 'error');
+      }
     }
   }
-  renderFileStrip(); updateSendBtn();
+  renderFileStrip();
+  updateSendBtn();
 }
 
 function renderFileStrip() {
   fs.innerHTML = '';
   if (!state.pendingFiles.length) { fs.hidden = true; return; }
   fs.hidden = false;
+
   state.pendingFiles.forEach((f, i) => {
     const chip = document.createElement('div');
     chip.className = 'file-preview';
+
     if (f.type === 'image') {
-      const img = document.createElement('img'); img.src = f.dataUrl; img.alt = f.name; chip.appendChild(img);
+      const img = document.createElement('img');
+      img.src = f.dataUrl; img.alt = f.name;
+      chip.appendChild(img);
     } else if (f.type === 'table') {
       chip.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>`;
       chip.title = `${f.rows} rows × ${f.cols} cols`;
@@ -610,21 +780,35 @@ function renderFileStrip() {
     } else {
       chip.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
     }
-    const name = document.createElement('span'); name.className = 'file-preview-name'; name.textContent = f.name;
-    const rm   = document.createElement('button'); rm.className = 'file-remove-btn'; rm.innerHTML = '✕';
+
+    const name = document.createElement('span');
+    name.className = 'file-preview-name';
+    name.textContent = f.name;
+
+    const rm = document.createElement('button');
+    rm.className = 'file-remove-btn';
+    rm.innerHTML = '✕';
     rm.setAttribute('aria-label', 'Remove ' + f.name);
-    rm.addEventListener('click', () => { state.pendingFiles.splice(i, 1); renderFileStrip(); updateSendBtn(); });
-    chip.append(name, rm); fs.appendChild(chip);
+    rm.addEventListener('click', () => {
+      state.pendingFiles.splice(i, 1);
+      renderFileStrip(); updateSendBtn();
+    });
+
+    chip.append(name, rm);
+    fs.appendChild(chip);
   });
 }
 
 atb.addEventListener('click', () => fi.click());
-fi.addEventListener('change',  () => { addFiles(Array.from(fi.files)); fi.value = ''; });
+fi.addEventListener('change', () => { addFiles(Array.from(fi.files)); fi.value = ''; });
+
 ibx.addEventListener('dragover',  e => { e.preventDefault(); ibx.classList.add('drag-over'); });
-ibx.addEventListener('dragleave', () => ibx.classList.remove('drag-over'));
+ibx.addEventListener('dragleave', ()  => ibx.classList.remove('drag-over'));
 ibx.addEventListener('drop', e => {
-  e.preventDefault(); ibx.classList.remove('drag-over'); addFiles(Array.from(e.dataTransfer.files));
+  e.preventDefault(); ibx.classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files));
 });
+
 ci.addEventListener('paste', e => {
   const img = Array.from(e.clipboardData?.items || []).find(it => it.type.startsWith('image/'));
   if (img) { e.preventDefault(); addFiles([img.getAsFile()]); }
@@ -637,33 +821,56 @@ exp.addEventListener('click', () => {
   const md = `# ${s.title}\n\n` + s.messages
     .map(m => `**${m.role === 'user' ? 'You' : 'AI'}:**\n\n${m.content}`)
     .join('\n\n---\n\n');
-  const a = document.createElement('a');
-  a.href     = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
+  const a  = document.createElement('a');
+  a.href   = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
   a.download = s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.md';
   a.click();
   showToast('Exported ✓', 'success');
 });
 
-ncb.addEventListener('click', () => { createSession(); renderHistory(); renderMessages(); updateStats(); ci.focus(); });
+ncb.addEventListener('click', () => {
+  createSession(); renderHistory(); renderMessages(); updateStats(); ci.focus();
+});
+
 clb.addEventListener('click', () => {
   const s = getSession();
-  s.messages = []; s.title = 'New Chat'; s.charCount = 0; s.tokenEst = 0; state.lastRespMs = null;
+  s.messages = []; s.title = 'New Chat'; s.charCount = 0; s.tokenEst = 0;
+  state.lastRespMs = null;
   renderHistory(); renderMessages(); updateStats();
 });
 
-function adjustTA()    { ci.style.height = 'auto'; ci.style.height = Math.min(ci.scrollHeight, 160) + 'px'; }
-function updateSendBtn() { sb.disabled = (!ci.value.trim() && !state.pendingFiles.length) || state.isStreaming || !hasValidKey(); }
-function scrollBottom()  { mw.scrollTo({ top: mw.scrollHeight, behavior: 'smooth' }); }
+// ═══ INPUT HELPERS ════════════════════════════════════════
+function adjustTA() {
+  ci.style.height = 'auto';
+  ci.style.height = Math.min(ci.scrollHeight, 160) + 'px';
+}
+
+function updateSendBtn() {
+  sb.disabled = (!ci.value.trim() && !state.pendingFiles.length) || state.isStreaming || !hasValidKey();
+}
 
 ci.addEventListener('input',   () => { adjustTA(); updateSendBtn(); });
-ci.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+ci.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+function scrollBottom() {
+  mw.scrollTo({ top: mw.scrollHeight, behavior: 'smooth' });
+}
 
 let _tt;
 function showToast(msg, type = '') {
-  const t = $('toast'); t.textContent = msg; t.className = 'toast show ' + type;
-  clearTimeout(_tt); _tt = setTimeout(() => t.className = 'toast', 3200);
+  const t = $('toast');
+  t.textContent = msg;
+  t.className   = 'toast show ' + type;
+  clearTimeout(_tt);
+  if (msg) _tt = setTimeout(() => t.className = 'toast', 3200);
 }
 
 // ═══ INIT ═════════════════════════════════════════════════
 setupKeyField();
-createSession(); renderHistory(); renderMessages(); updateStats(); updateSendBtn();
+createSession();
+renderHistory();
+renderMessages();
+updateStats();
+updateSendBtn();
