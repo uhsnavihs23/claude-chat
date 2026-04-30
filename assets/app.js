@@ -5,7 +5,7 @@
 // Cloudflare Worker (GitHub Pages):  "https://YOUR-WORKER.workers.dev"
 // Netlify function:                  "/api/chat"  (works automatically)
 //
-const PROXY_URL = "dark-feather-5042.insightfulscroll.workers.dev"; // ← paste your Worker URL here for keyless mode
+const PROXY_URL = "https://dark-feather-5042.insightfulscroll.workers.dev";
 
 const OR_DIRECT = "https://openrouter.ai/api/v1/chat/completions";
 const CTX_LIMIT  = 128000;
