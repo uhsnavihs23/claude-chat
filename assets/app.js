@@ -7,14 +7,35 @@
 //
 const PROXY_URL = "https://dark-feather-5042.insightfulscroll.workers.dev";
 
+const MODEL_CAPS = {
+  'baidu/qianfan-ocr-fast:free': { kind: 'ocr', multimodal: true },
+  'tencent/hy3-preview:free': { kind: 'multimodal', multimodal: true },
+  'minimax/minimax-m2.5:free': { kind: 'text', multimodal: false },
+  'nvidia/nemotron-nano-12b-v2-vl:free': { kind: 'vision', multimodal: true },
+  'google/gemma-4-31b-it:free': { kind: 'multimodal', multimodal: true },
+  'google/gemma-4-26b-a4b-it:free': { kind: 'multimodal', multimodal: true },
+  'google/gemma-3-27b-it:free': { kind: 'multimodal', multimodal: true },
+  'google/gemma-3-12b-it:free': { kind: 'multimodal', multimodal: true },
+  'google/gemma-3-4b-it:free': { kind: 'multimodal', multimodal: true },
+  'google/gemma-3n-e4b-it:free': { kind: 'multimodal', multimodal: true },
+  'google/gemma-3n-e2b-it:free': { kind: 'multimodal', multimodal: true },
+};
+
+function getSelectedModelMeta() {
+  return MODEL_CAPS[ms?.value] || { kind: 'text', multimodal: false };
+}
+
 const OR_DIRECT = "https://openrouter.ai/api/v1/chat/completions";
 const CTX_LIMIT  = 128000;
 
 // ═══ STATE ════════════════════════════════════════════════
 const state = {
-  sessions: [], activeId: null,
-  isStreaming: false, pendingFiles: [],
-  lastRespMs: null, apiKey: ''
+  sessions: [],
+  activeId: null,
+  isStreaming: false,
+  pendingFiles: [],
+  lastRespMs: null,
+  apiKey: ''
 };
 
 // ═══ DOM ══════════════════════════════════════════════════
@@ -45,12 +66,11 @@ const sch = $('stat-chars');
 const stm = $('stat-time');
 const tb  = $('token-bar');
 const tbl = $('token-bar-label');
-const krow = $('key-row'); // may be null in proxy mode
 
 // ═══ KEY RESOLUTION ════════════════════════════════════════
 // Priority: PROXY_URL > config.js > sidebar input
 function getApiKey() {
-  if (PROXY_URL) return '__proxy__'; // proxy mode, no key needed in frontend
+  if (PROXY_URL) return '__proxy__';
   if (window.APP_CONFIG?.OPENROUTER_API_KEY) return window.APP_CONFIG.OPENROUTER_API_KEY;
   return state.apiKey;
 }
@@ -62,19 +82,26 @@ function hasValidKey() {
 }
 
 // ═══ THEME ════════════════════════════════════════════════
-(function(){
-  const btn = $('theme-toggle'), root = document.documentElement;
+(function () {
+  const btn = $('theme-toggle');
+  const root = document.documentElement;
   let dark = root.getAttribute('data-theme') === 'dark' ||
-    (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme:dark)').matches);
-  const SUN  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+    (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const SUN = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
   const MOON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
   const upd = () => {
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
     btn.innerHTML = dark ? SUN : MOON;
     btn.setAttribute('aria-label', `Switch to ${dark ? 'light' : 'dark'} mode`);
   };
+
   upd();
-  btn.addEventListener('click', () => { dark = !dark; upd(); });
+  btn.addEventListener('click', () => {
+    dark = !dark;
+    upd();
+  });
 })();
 
 // ═══ SIDEBAR TOGGLE ═══════════════════════════════════════
@@ -86,29 +113,36 @@ stg.addEventListener('click', () => {
 function setupKeyField() {
   const keyRow = $('key-row');
   if (!keyRow) return;
+
   if (isProxyMode()) {
-    // Hide the entire key input row — proxy handles auth
     keyRow.hidden = true;
     kst.textContent = '🔒 Key secured via server proxy';
     kst.className = 'key-status ok';
     return;
   }
-  // Check if pre-loaded via config.js
+
   if (window.APP_CONFIG?.OPENROUTER_API_KEY) {
     aki.value = '••••••••••••••••';
     kst.textContent = '✓ Key loaded from config.js';
     kst.className = 'key-status ok';
     aki.disabled = true;
-    return;
   }
 }
 
 aki.addEventListener('input', () => {
   state.apiKey = aki.value.trim();
-  if (!state.apiKey) { kst.textContent = ''; kst.className = 'key-status'; }
-  else if (state.apiKey.startsWith('sk-or-')) { kst.textContent = '✓ Looks valid'; kst.className = 'key-status ok'; }
-  else { kst.textContent = 'Key should start with sk-or-'; kst.className = 'key-status err'; }
-  updateSendBtn(); renderMessages();
+  if (!state.apiKey) {
+    kst.textContent = '';
+    kst.className = 'key-status';
+  } else if (state.apiKey.startsWith('sk-or-')) {
+    kst.textContent = '✓ Looks valid';
+    kst.className = 'key-status ok';
+  } else {
+    kst.textContent = 'Key should start with sk-or-';
+    kst.className = 'key-status err';
+  }
+  updateSendBtn();
+  renderMessages();
 });
 
 kvb.addEventListener('click', () => {
@@ -123,97 +157,135 @@ kvb.addEventListener('click', () => {
 function createSession() {
   const id = Date.now().toString(36);
   const s = { id, title: 'New Chat', messages: [], tokenEst: 0, charCount: 0 };
-  state.sessions.unshift(s); state.activeId = id; return s;
+  state.sessions.unshift(s);
+  state.activeId = id;
+  return s;
 }
-function getSession() { return state.sessions.find(s => s.id === state.activeId) || createSession(); }
+
+function getSession() {
+  return state.sessions.find(s => s.id === state.activeId) || createSession();
+}
 
 function renderHistory() {
   hl.innerHTML = '';
   state.sessions.forEach(s => {
     const el = document.createElement('div');
     el.className = 'history-item' + (s.id === state.activeId ? ' active' : '');
-    el.textContent = s.title; el.title = s.title;
+    el.textContent = s.title;
+    el.title = s.title;
     el.setAttribute('role', 'listitem');
-    el.addEventListener('click', () => { state.activeId = s.id; renderHistory(); renderMessages(); updateStats(); });
+    el.addEventListener('click', () => {
+      state.activeId = s.id;
+      renderHistory();
+      renderMessages();
+      updateStats();
+    });
     hl.appendChild(el);
   });
 }
 
 // ═══ STATS ═══════════════════════════════════════════════
-function fmtNum(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+function fmtNum(n) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+}
 
 function updateStats() {
   const s = getSession();
   smg.textContent = s.messages.length;
-  sch.textContent  = fmtNum(s.charCount || 0);
-  stk.textContent  = fmtNum(s.tokenEst  || 0);
-  stm.textContent  = state.lastRespMs != null ? state.lastRespMs + 's' : '—';
+  sch.textContent = fmtNum(s.charCount || 0);
+  stk.textContent = fmtNum(s.tokenEst || 0);
+  stm.textContent = state.lastRespMs != null ? state.lastRespMs + 's' : '—';
+
   const pct = Math.min(((s.tokenEst || 0) / CTX_LIMIT) * 100, 100);
   tb.style.width = pct + '%';
-  if (pct > 80)      tb.style.background = 'linear-gradient(90deg,#f59e0b,#ef4444)';
+
+  if (pct > 80) tb.style.background = 'linear-gradient(90deg,#f59e0b,#ef4444)';
   else if (pct > 50) tb.style.background = 'linear-gradient(90deg,var(--ac),#f59e0b)';
-  else               tb.style.background = 'linear-gradient(90deg,var(--ac),#06b6d4)';
+  else tb.style.background = 'linear-gradient(90deg,var(--ac),#06b6d4)';
+
   tbl.textContent = `${fmtNum(s.tokenEst || 0)} / 128k ctx`;
   tbt.textContent = s.title;
+
   const modelLabel = ms.options[ms.selectedIndex]?.text || '';
-  tbm.textContent = modelLabel.replace(' ⭐','').replace('(free)','').trim().split(' ').slice(0,4).join(' ');
+  tbm.textContent = modelLabel.replace(' ⭐', '').replace('(free)', '').trim();
 }
 ms.addEventListener('change', updateStats);
 
 // ═══ MARKDOWN ════════════════════════════════════════════
-function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function renderMd(raw) {
   const blocks = [];
   let text = raw.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-    const i = blocks.length, id = `cb_${Date.now()}_${i}`;
+    const i = blocks.length;
+    const id = `cb_${Date.now()}_${i}`;
     blocks.push({ lang: lang || 'code', code: code.trim(), id });
     return `\x00BLK${i}\x00`;
   });
+
   text = text.replace(/`([^`\n]+)`/g, (_, c) => `<code>${esc(c)}</code>`);
   text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
   text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  text = text.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
-  text = text.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
+  text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
   text = text.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
   text = text.replace(/^---$/gm, '<hr>');
   text = text.replace(/^(\s*[-*+] .+)/gm, l => `<li>${l.replace(/^\s*[-*+] /, '')}</li>`);
   text = text.replace(/(<li>[\s\S]+?<\/li>)/g, '<ul>$1</ul>');
+
   text = text.split(/\n{2,}/).map(b => {
-    b = b.trim(); if (!b) return '';
+    b = b.trim();
+    if (!b) return '';
     if (/^\x00BLK/.test(b) || /^<(h[1-3]|ul|ol|li|hr|blockquote)/.test(b)) return b;
     return `<p>${b.replace(/\n/g, '<br>')}</p>`;
   }).join('');
+
   blocks.forEach(({ lang, code, id }, i) => {
     const btn = `<button class="copy-code-btn" data-target="${id}">Copy</button>`;
     const html = `<pre><div class="code-header"><span class="code-lang">${lang}</span>${btn}</div><code id="${id}">${esc(code)}</code></pre>`;
     text = text.replace(`\x00BLK${i}\x00`, html);
   });
+
   return text;
 }
+
 document.addEventListener('click', e => {
   const btn = e.target.closest('.copy-code-btn');
   if (!btn) return;
   const t = document.getElementById(btn.dataset.target);
   if (!t) return;
+
   navigator.clipboard.writeText(t.textContent).then(() => {
-    btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 1600);
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1600);
   });
 });
 
 // ═══ RENDER MESSAGES ══════════════════════════════════════
 function renderMessages() {
-  const s = getSession(); mw.innerHTML = '';
-  if (!s.messages.length) { mw.appendChild(buildWelcome()); return; }
+  const s = getSession();
+  mw.innerHTML = '';
+  if (!s.messages.length) {
+    mw.appendChild(buildWelcome());
+    return;
+  }
   s.messages.forEach(m => mw.appendChild(buildMsg(m.role, m.content, m.files)));
   scrollBottom();
 }
 
 function buildWelcome() {
-  const d = document.createElement('div'); d.className = 'welcome';
+  const d = document.createElement('div');
+  d.className = 'welcome';
   const needsKey = !isProxyMode() && !hasValidKey();
+
   d.innerHTML = `
     <div class="welcome-icon">
       <svg width="52" height="52" viewBox="0 0 32 32" fill="none">
@@ -234,77 +306,174 @@ function buildWelcome() {
       <button class="suggestion-chip">Write a SQL query</button>
       <button class="suggestion-chip">Summarize an attached document</button>
     </div>`;
+
   d.querySelectorAll('.suggestion-chip').forEach(b => b.addEventListener('click', () => {
-    ci.value = b.textContent; adjustTA(); updateSendBtn(); sendMessage();
+    ci.value = b.textContent;
+    adjustTA();
+    updateSendBtn();
+    sendMessage();
   }));
+
   return d;
 }
 
 function buildMsg(role, content, files = []) {
-  const wrap = document.createElement('div'); wrap.className = `msg ${role}`;
-  const av = document.createElement('div'); av.className = 'msg-avatar'; av.setAttribute('aria-hidden','true');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  const av = document.createElement('div');
+  av.className = 'msg-avatar';
+  av.setAttribute('aria-hidden', 'true');
   av.textContent = role === 'user' ? 'U' : 'AI';
-  const body = document.createElement('div'); body.className = 'msg-body';
-  const meta = document.createElement('div'); meta.className = 'msg-meta';
-  const roleEl = document.createElement('span'); roleEl.className = 'msg-role';
-  roleEl.textContent = role === 'user' ? 'You' : (ms.options[ms.selectedIndex]?.text || 'AI').split(' ').slice(0,3).join(' ').replace(':free','').replace('⭐','').trim();
-  const timeEl = document.createElement('span'); timeEl.className = 'msg-time';
+
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+
+  const roleEl = document.createElement('span');
+  roleEl.className = 'msg-role';
+  roleEl.textContent = role === 'user'
+    ? 'You'
+    : (ms.options[ms.selectedIndex]?.text || 'AI').replace(':free', '').replace('⭐', '').trim();
+
+  const timeEl = document.createElement('span');
+  timeEl.className = 'msg-time';
   timeEl.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   meta.append(roleEl, timeEl);
-  const contentEl = document.createElement('div'); contentEl.className = 'msg-content';
-  if (files && files.length) files.forEach(f => {
-    if (f.type === 'image') {
-      const img = document.createElement('img'); img.src = f.dataUrl; img.className = 'msg-img'; img.alt = f.name; img.loading = 'lazy'; contentEl.appendChild(img);
-    } else {
-      const chip = document.createElement('div'); chip.className = 'msg-file-chip';
-      chip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${esc(f.name)}`;
-      contentEl.appendChild(chip);
-    }
-  });
-  const td = document.createElement('div'); td.innerHTML = content ? renderMd(content) : '';
+
+  const contentEl = document.createElement('div');
+  contentEl.className = 'msg-content';
+
+  if (files && files.length) {
+    files.forEach(f => {
+      if (f.type === 'image') {
+        const img = document.createElement('img');
+        img.src = f.dataUrl;
+        img.className = 'msg-img';
+        img.alt = f.name;
+        img.loading = 'lazy';
+        contentEl.appendChild(img);
+      } else {
+        const chip = document.createElement('div');
+        chip.className = 'msg-file-chip';
+
+        if (f.type === 'binary') {
+          chip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg>${esc(f.name)}`;
+        } else {
+          chip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${esc(f.name)}`;
+        }
+
+        contentEl.appendChild(chip);
+      }
+    });
+  }
+
+  const td = document.createElement('div');
+  td.innerHTML = content ? renderMd(content) : '';
   contentEl.appendChild(td);
-  const acts = document.createElement('div'); acts.className = 'msg-actions';
-  const copyBtn = document.createElement('button'); copyBtn.className = 'msg-act-btn';
+
+  const acts = document.createElement('div');
+  acts.className = 'msg-actions';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'msg-act-btn';
   copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+
   copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(content).then(() => {
       copyBtn.innerHTML = '✓ Copied!';
-      setTimeout(() => { copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`; }, 1600);
+      setTimeout(() => {
+        copyBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+      }, 1600);
     });
   });
+
   acts.appendChild(copyBtn);
-  body.append(meta, contentEl, acts); wrap.append(av, body); return wrap;
+  body.append(meta, contentEl, acts);
+  wrap.append(av, body);
+  return wrap;
 }
 
 // ═══ SEND ════════════════════════════════════════════════
 async function sendMessage() {
   const text = ci.value.trim();
   if ((!text && !state.pendingFiles.length) || state.isStreaming) return;
-  if (!hasValidKey()) { showToast('Add your OpenRouter API key in the sidebar', 'error'); aki.focus(); return; }
+
+  if (!hasValidKey()) {
+    showToast('Add your OpenRouter API key in the sidebar', 'error');
+    aki.focus();
+    return;
+  }
 
   const session = getSession();
-  const files = [...state.pendingFiles]; state.pendingFiles = []; renderFileStrip();
+  const files = [...state.pendingFiles];
+  state.pendingFiles = [];
+  renderFileStrip();
+
   let apiContent = text;
+
   if (files.length) {
     const txtFiles = files.filter(f => f.type === 'text');
-    if (txtFiles.length) apiContent += '\n\n' + txtFiles.map(f => `### File: ${f.name}\n\`\`\`\n${f.content.slice(0, 14000)}\n\`\`\``).join('\n\n');
+    if (txtFiles.length) {
+      apiContent += '\n\n' + txtFiles
+        .map(f => `### File: ${f.name}\n\`\`\`\n${f.content.slice(0, 14000)}\n\`\`\``)
+        .join('\n\n');
+    }
+
+    const binaryFiles = files.filter(f => f.type === 'binary');
+    if (binaryFiles.length) {
+      apiContent += '\n\n' + binaryFiles
+        .map(f => `[Attached binary file: ${f.name} | type: ${f.ext}]`)
+        .join('\n');
+    }
+
     const imgFiles = files.filter(f => f.type === 'image');
-    if (imgFiles.length) apiContent += '\n\n[User attached image(s): ' + imgFiles.map(f => f.name).join(', ') + ']';
+    if (imgFiles.length) {
+      apiContent += '\n\n[User attached image(s): ' + imgFiles.map(f => f.name).join(', ') + ']';
+    }
   }
+
   session.messages.push({ role: 'user', content: apiContent, files, displayContent: text });
-  if (session.messages.length === 1) session.title = text.slice(0, 42) + (text.length > 42 ? '…' : '');
-  ci.value = ''; adjustTA(); sb.disabled = true; state.isStreaming = true;
-  const welcome = mw.querySelector('.welcome'); if (welcome) welcome.remove();
+
+  if (session.messages.length === 1) {
+    session.title = text.slice(0, 42) + (text.length > 42 ? '…' : '');
+  }
+
+  ci.value = '';
+  adjustTA();
+  sb.disabled = true;
+  state.isStreaming = true;
+
+  const welcome = mw.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
   mw.appendChild(buildMsg('user', text, files));
-  renderHistory(); scrollBottom();
+  renderHistory();
+  scrollBottom();
 
   const aEl = buildMsg('assistant', '');
-  const td = aEl.querySelector('.msg-content > div'); td.className = 'streaming-cursor';
-  mw.appendChild(aEl); scrollBottom();
+  const td = aEl.querySelector('.msg-content > div');
+  td.className = 'streaming-cursor';
+  mw.appendChild(aEl);
+  scrollBottom();
 
-  let fullText = ''; const t0 = Date.now();
+  let fullText = '';
+  const t0 = Date.now();
+
   try {
     const model = ms.value;
+    const modelMeta = getSelectedModelMeta();
+
+    if (/^google\/gemma-4-/i.test(model)) {
+      showToast('Gemma 4 selected — if the provider pool is full, switch to Gemma 3 or GPT-OSS 120B', 'success');
+    }
+    if (modelMeta.kind === 'ocr') {
+      showToast('OCR model selected — real OCR image payload routing comes in the next step', 'success');
+    }
+
     const apiMessages = [];
     const sys = syp.value.trim();
     if (sys) apiMessages.push({ role: 'system', content: sys });
@@ -312,6 +481,7 @@ async function sendMessage() {
 
     const endpoint = isProxyMode() ? PROXY_URL : OR_DIRECT;
     const headers = { 'Content-Type': 'application/json' };
+
     if (!isProxyMode()) {
       headers['Authorization'] = `Bearer ${getApiKey()}`;
       headers['HTTP-Referer'] = window.location.origin || 'http://localhost';
@@ -319,8 +489,13 @@ async function sendMessage() {
     }
 
     const resp = await fetch(endpoint, {
-      method: 'POST', headers,
-      body: JSON.stringify({ model, messages: apiMessages, stream: true })
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: apiMessages,
+        stream: true
+      })
     });
 
     if (!resp.ok) {
@@ -328,99 +503,267 @@ async function sendMessage() {
       throw new Error(errData?.error?.message || `HTTP ${resp.status}: ${resp.statusText}`);
     }
 
-    const reader = resp.body.getReader(), decoder = new TextDecoder();
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
     let buf = '';
+
     while (true) {
-      const { done, value } = await reader.read(); if (done) break;
+      const { done, value } = await reader.read();
+      if (done) break;
+
       buf += decoder.decode(value, { stream: true });
-      const lines = buf.split('\n'); buf = lines.pop();
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6).trim(); if (data === '[DONE]') continue;
-        try { const j = JSON.parse(data); const delta = j.choices?.[0]?.delta?.content || ''; if (delta) { fullText += delta; td.innerHTML = renderMd(fullText); scrollBottom(); } } catch {}
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+
+        try {
+          const j = JSON.parse(data);
+          const delta = j.choices?.[0]?.delta?.content || '';
+          if (delta) {
+            fullText += delta;
+            td.innerHTML = renderMd(fullText);
+            scrollBottom();
+          }
+        } catch {}
       }
     }
+
     td.classList.remove('streaming-cursor');
     session.messages.push({ role: 'assistant', content: fullText });
+
     state.lastRespMs = ((Date.now() - t0) / 1000).toFixed(1);
     const chars = session.messages.reduce((a, m) => a + (m.content?.length || 0), 0);
-    session.charCount = chars; session.tokenEst = Math.round(chars / 4);
+    session.charCount = chars;
+    session.tokenEst = Math.round(chars / 4);
     updateStats();
   } catch (err) {
     td.classList.remove('streaming-cursor');
     td.innerHTML = `<p style="color:var(--tx2)">⚠️ ${esc(err?.message || 'API error — check your key and model.')}</p>`;
-    session.messages.pop(); showToast(err?.message || 'Request failed', 'error');
+    session.messages.pop();
+    showToast(err?.message || 'Request failed', 'error');
   } finally {
-    state.isStreaming = false; updateSendBtn(); renderHistory(); scrollBottom();
+    state.isStreaming = false;
+    updateSendBtn();
+    renderHistory();
+    scrollBottom();
   }
 }
 
 // ═══ FILES ════════════════════════════════════════════════
-const TXT_EXT = ['.txt','.md','.csv','.json','.py','.js','.ts','.html','.css','.xml','.yaml','.yml','.sh','.sql','.jsx','.tsx','.vue','.rs','.go','.rb','.php'];
-const readDataUrl = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(f); });
-const readText    = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsText(f); });
+const TXT_EXT = ['.txt','.md','.csv','.json','.py','.js','.ts','.html','.css','.xml','.yaml','.yml','.sh','.sql','.jsx','.tsx','.vue','.rs','.go','.rb','.php','.java','.c','.cpp','.h','.hpp','.log','.ini','.toml'];
+const BINARY_EXT = ['.pdf','.xlsx','.xls'];
+
+const readDataUrl = f => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = e => res(e.target.result);
+  r.onerror = rej;
+  r.readAsDataURL(f);
+});
+
+const readText = f => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = e => res(e.target.result);
+  r.onerror = rej;
+  r.readAsText(f);
+});
 
 async function addFiles(files) {
   for (const file of files) {
     const ext = '.' + file.name.split('.').pop().toLowerCase();
-    if (file.type.startsWith('image/')) { const d = await readDataUrl(file); state.pendingFiles.push({ file, name: file.name, type: 'image', dataUrl: d }); }
-    else if (TXT_EXT.includes(ext) || file.type === 'text/plain') { const c = await readText(file); state.pendingFiles.push({ file, name: file.name, type: 'text', content: c }); }
-    else { try { const c = await readText(file); state.pendingFiles.push({ file, name: file.name, type: 'text', content: c }); } catch { showToast('Cannot read: ' + file.name, 'error'); } }
+
+    if (file.type.startsWith('image/')) {
+      const d = await readDataUrl(file);
+      state.pendingFiles.push({
+        file,
+        name: file.name,
+        type: 'image',
+        dataUrl: d,
+        mime: file.type || 'image/png'
+      });
+    } else if (TXT_EXT.includes(ext) || file.type === 'text/plain') {
+      const c = await readText(file);
+      state.pendingFiles.push({
+        file,
+        name: file.name,
+        type: 'text',
+        content: c
+      });
+    } else if (BINARY_EXT.includes(ext)) {
+      state.pendingFiles.push({
+        file,
+        name: file.name,
+        type: 'binary',
+        ext,
+        note: 'Binary file attached. Structured parsing will be added in the next step.'
+      });
+      showToast(`${file.name} attached — parser support comes in next step`, 'success');
+    } else {
+      try {
+        const c = await readText(file);
+        state.pendingFiles.push({
+          file,
+          name: file.name,
+          type: 'text',
+          content: c
+        });
+      } catch {
+        showToast('Cannot read: ' + file.name, 'error');
+      }
+    }
   }
-  renderFileStrip(); updateSendBtn();
+
+  renderFileStrip();
+  updateSendBtn();
 }
 
 function renderFileStrip() {
   fs.innerHTML = '';
-  if (!state.pendingFiles.length) { fs.hidden = true; return; }
+
+  if (!state.pendingFiles.length) {
+    fs.hidden = true;
+    return;
+  }
+
   fs.hidden = false;
+
   state.pendingFiles.forEach((f, i) => {
-    const chip = document.createElement('div'); chip.className = 'file-preview';
-    if (f.type === 'image') { const img = document.createElement('img'); img.src = f.dataUrl; img.alt = f.name; chip.appendChild(img); }
-    else chip.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
-    const name = document.createElement('span'); name.className = 'file-preview-name'; name.textContent = f.name;
-    const rm = document.createElement('button'); rm.className = 'file-remove-btn'; rm.innerHTML = '✕'; rm.setAttribute('aria-label', 'Remove ' + f.name);
-    rm.addEventListener('click', () => { state.pendingFiles.splice(i, 1); renderFileStrip(); updateSendBtn(); });
-    chip.append(name, rm); fs.appendChild(chip);
+    const chip = document.createElement('div');
+    chip.className = 'file-preview';
+
+    if (f.type === 'image') {
+      const img = document.createElement('img');
+      img.src = f.dataUrl;
+      img.alt = f.name;
+      chip.appendChild(img);
+    } else if (f.type === 'binary') {
+      chip.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg>`;
+    } else {
+      chip.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+    }
+
+    const name = document.createElement('span');
+    name.className = 'file-preview-name';
+    name.textContent = f.name;
+
+    const rm = document.createElement('button');
+    rm.className = 'file-remove-btn';
+    rm.innerHTML = '✕';
+    rm.setAttribute('aria-label', 'Remove ' + f.name);
+    rm.addEventListener('click', () => {
+      state.pendingFiles.splice(i, 1);
+      renderFileStrip();
+      updateSendBtn();
+    });
+
+    chip.append(name, rm);
+    fs.appendChild(chip);
   });
 }
 
 atb.addEventListener('click', () => fi.click());
-fi.addEventListener('change', () => { addFiles(Array.from(fi.files)); fi.value = ''; });
-ibx.addEventListener('dragover',  e => { e.preventDefault(); ibx.classList.add('drag-over'); });
+fi.addEventListener('change', () => {
+  addFiles(Array.from(fi.files));
+  fi.value = '';
+});
+ibx.addEventListener('dragover', e => {
+  e.preventDefault();
+  ibx.classList.add('drag-over');
+});
 ibx.addEventListener('dragleave', () => ibx.classList.remove('drag-over'));
-ibx.addEventListener('drop', e => { e.preventDefault(); ibx.classList.remove('drag-over'); addFiles(Array.from(e.dataTransfer.files)); });
-ci.addEventListener('paste', e => { const img = Array.from(e.clipboardData?.items || []).find(it => it.type.startsWith('image/')); if (img) { e.preventDefault(); addFiles([img.getAsFile()]); } });
+ibx.addEventListener('drop', e => {
+  e.preventDefault();
+  ibx.classList.remove('drag-over');
+  addFiles(Array.from(e.dataTransfer.files));
+});
+ci.addEventListener('paste', e => {
+  const img = Array.from(e.clipboardData?.items || []).find(it => it.type.startsWith('image/'));
+  if (img) {
+    e.preventDefault();
+    addFiles([img.getAsFile()]);
+  }
+});
 
 // ═══ EXPORT ═══════════════════════════════════════════════
 exp.addEventListener('click', () => {
-  const s = getSession(); if (!s.messages.length) { showToast('Nothing to export', 'error'); return; }
-  const md = `# ${s.title}\n\n` + s.messages.map(m => `**${m.role === 'user' ? 'You' : 'AI'}:**\n\n${m.content}`).join('\n\n---\n\n');
+  const s = getSession();
+  if (!s.messages.length) {
+    showToast('Nothing to export', 'error');
+    return;
+  }
+
+  const md = `# ${s.title}\n\n` + s.messages
+    .map(m => `**${m.role === 'user' ? 'You' : 'AI'}:**\n\n${m.content}`)
+    .join('\n\n---\n\n');
+
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
-  a.download = s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.md'; a.click();
+  a.download = s.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.md';
+  a.click();
   showToast('Exported ✓', 'success');
 });
 
-ncb.addEventListener('click', () => { createSession(); renderHistory(); renderMessages(); updateStats(); ci.focus(); });
-clb.addEventListener('click', () => {
-  const s = getSession(); s.messages = []; s.title = 'New Chat'; s.charCount = 0; s.tokenEst = 0; state.lastRespMs = null;
-  renderHistory(); renderMessages(); updateStats();
+ncb.addEventListener('click', () => {
+  createSession();
+  renderHistory();
+  renderMessages();
+  updateStats();
+  ci.focus();
 });
 
-function adjustTA() { ci.style.height = 'auto'; ci.style.height = Math.min(ci.scrollHeight, 160) + 'px'; }
-function updateSendBtn() { sb.disabled = (!ci.value.trim() && !state.pendingFiles.length) || state.isStreaming || !hasValidKey(); }
-ci.addEventListener('input', () => { adjustTA(); updateSendBtn(); });
-ci.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+clb.addEventListener('click', () => {
+  const s = getSession();
+  s.messages = [];
+  s.title = 'New Chat';
+  s.charCount = 0;
+  s.tokenEst = 0;
+  state.lastRespMs = null;
+  renderHistory();
+  renderMessages();
+  updateStats();
+});
 
-function scrollBottom() { mw.scrollTo({ top: mw.scrollHeight, behavior: 'smooth' }); }
+function adjustTA() {
+  ci.style.height = 'auto';
+  ci.style.height = Math.min(ci.scrollHeight, 160) + 'px';
+}
+
+function updateSendBtn() {
+  sb.disabled = (!ci.value.trim() && !state.pendingFiles.length) || state.isStreaming || !hasValidKey();
+}
+
+ci.addEventListener('input', () => {
+  adjustTA();
+  updateSendBtn();
+});
+
+ci.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function scrollBottom() {
+  mw.scrollTo({ top: mw.scrollHeight, behavior: 'smooth' });
+}
 
 let _tt;
 function showToast(msg, type = '') {
-  const t = $('toast'); t.textContent = msg; t.className = 'toast show ' + type;
-  clearTimeout(_tt); _tt = setTimeout(() => t.className = 'toast', 3200);
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(_tt);
+  _tt = setTimeout(() => t.className = 'toast', 3200);
 }
 
 // ═══ INIT ═════════════════════════════════════════════════
 setupKeyField();
-createSession(); renderHistory(); renderMessages(); updateStats();
+createSession();
+renderHistory();
+renderMessages();
+updateStats();
+updateSendBtn();
