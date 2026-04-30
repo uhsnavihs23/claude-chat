@@ -417,8 +417,22 @@ async function sendMessage() {
   state.pendingFiles = [];
   renderFileStrip();
 
-  let apiContent = text;
+    let apiContent = text;
 
+  // Web search injection (runs before files are appended)
+  let searchedWeb = false;
+  if (window.AppSearch && isProxyMode()) {
+    showToast('🔍 Checking if web search needed…', '');
+    const { contextBlock, searched, source } = await window.AppSearch.prepareContext(text);
+    if (searched && contextBlock) {
+      apiContent = contextBlock + '\n\n---\n\n**User Question:**\n' + text;
+      searchedWeb = true;
+      showToast(`🌐 Web results injected (${source})`, 'success');
+    } else {
+      // Clear the checking toast
+      showToast('', '');
+    }
+  }
 
       if (files.length) {
     const txtFiles = files.filter(f => f.type === 'text');
