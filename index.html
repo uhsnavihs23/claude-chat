@@ -18,7 +18,7 @@
       <div class="sidebar-header">
         <div class="logo">
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-            <rect x="2" y="2" width="28" height="28" rx="8" fill="var(--accent)"/>
+            <rect x="2" y="2" width="28" height="28" rx="8" fill="var(--ac)"/>
             <circle cx="16" cy="12" r="4" fill="white" opacity="0.9"/>
             <path d="M8 24c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="white" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.9"/>
           </svg>
@@ -27,7 +27,7 @@
         <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme"></button>
       </div>
 
-      <!-- API Key input -->
+      <!-- API Key -->
       <div id="key-row" class="field-group">
         <label class="field-label" for="api-key-input">
           OpenRouter API Key
@@ -36,7 +36,10 @@
         <div class="key-wrap">
           <input type="password" id="api-key-input" class="key-input" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" />
           <button class="icon-btn key-vis-btn" id="key-vis-btn" aria-label="Show/hide key" title="Toggle visibility">
-            <svg id="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
           </button>
         </div>
         <div class="key-status" id="key-status"></div>
@@ -46,7 +49,6 @@
       <div class="field-group">
         <label class="field-label" for="model-select">Free Model</label>
         <div class="select-wrap">
-
           <select id="model-select">
 
             <!-- ══ FEATURED ══ -->
@@ -61,16 +63,16 @@
             <!-- ══ CODING ══ -->
             <optgroup label="💻 Coding">
               <option value="qwen/qwen3-coder:free">Qwen3 Coder 480B A35B</option>
-              <option value="poolside/laguna-m.1:free">Poolside Laguna M.1</option>
-              <option value="poolside/laguna-xs.2:free">Poolside Laguna XS.2</option>
+              <option value="poolside/laguna-m1:free">Poolside Laguna M.1</option>
+              <option value="poolside/laguna-xs2:free">Poolside Laguna XS.2</option>
               <option value="nvidia/nemotron-3-nano-30b-a3b:free">NVIDIA Nemotron Nano 30B</option>
             </optgroup>
 
             <!-- ══ REASONING ══ -->
             <optgroup label="🧠 Reasoning">
-              <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">NVIDIA Nemotron Omni (Reasoning)</option>
-              <option value="qwen/qwen3-next-80b-a3b-instruct:free">Qwen3 Next 80B A3B</option>
-              <option value="liquid/lfm-2.5-1.2b-thinking:free">LiquidAI LFM2.5 Thinking</option>
+              <option value="nvidia/nemotron-3-nano-omni:free">NVIDIA Nemotron Omni (Reasoning)</option>
+              <option value="qwen/qwen3-80b-a3b-instruct:free">Qwen3 Next 80B A3B</option>
+              <option value="liquid/lfm2.5-1.2b-thinking:free">LiquidAI LFM2.5 Thinking</option>
             </optgroup>
 
             <!-- ══ VISION / MULTIMODAL ══ -->
@@ -78,6 +80,7 @@
               <option value="tencent/hy3-preview:free">Tencent Hunyuan 3 Preview</option>
               <option value="minimax/minimax-m2.5:free">MiniMax M2.5</option>
               <option value="nvidia/nemotron-nano-12b-v2-vl:free">NVIDIA Nemotron 12B VL</option>
+              <option value="nvidia/llama-nemotron-embed-vl-1b-v2:free">NVIDIA Llama Nemotron Embed VL 1B</option>
             </optgroup>
 
             <!-- ══ OCR / DOCUMENT ══ -->
@@ -99,21 +102,26 @@
             <!-- ══ OTHERS / FAST ══ -->
             <optgroup label="🤖 Others / Fast">
               <option value="z-ai/glm-4.5-air:free">Z.AI GLM 4.5 Air</option>
-              <option value="nvidia/nemotron-nano-9b-v2:free">NVIDIA Nemotron Nano 9B</option>
+              <option value="nvidia/nemotron-nano-9b-v2:free">NVIDIA Nemotron Nano 9B V2</option>
               <option value="nousresearch/hermes-3-llama-3.1-405b:free">Nous Hermes 3 405B</option>
-              <option value="cognitivecomputations/dolphin-mistral-24b-venice-edition:free">Venice Uncensored</option>
-              <option value="liquid/lfm-2.5-1.2b-instruct:free">LiquidAI LFM2.5 Instruct</option>
+              <option value="venice-ai/venice-uncensored:free">Venice Uncensored</option>
+              <option value="liquid/lfm2.5-1.2b-instruct:free">LiquidAI LFM2.5 Instruct</option>
               <option value="meta-llama/llama-3.2-3b-instruct:free">Meta Llama 3.2 3B ⚡</option>
-              <option value="openrouter/free">⚡ Auto Free Router</option>
+              <option value="openrouter/auto">⚡ Auto Free Router</option>
             </optgroup>
 
           </select>
-          <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
         </div>
       </div>
 
       <button class="new-chat-btn" id="new-chat-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
         New Chat
       </button>
 
@@ -127,13 +135,27 @@
       <div class="stats-panel">
         <div class="stats-title">Session Stats</div>
         <div class="stats-grid">
-          <div class="stat-item"><span class="stat-val" id="stat-msgs">0</span><span class="stat-key">Messages</span></div>
-          <div class="stat-item"><span class="stat-val" id="stat-tokens">0</span><span class="stat-key">Est. Tokens</span></div>
-          <div class="stat-item"><span class="stat-val" id="stat-chars">0</span><span class="stat-key">Characters</span></div>
-          <div class="stat-item"><span class="stat-val" id="stat-time">—</span><span class="stat-key">Last Resp.</span></div>
+          <div class="stat-item">
+            <span class="stat-val" id="stat-msgs">0</span>
+            <span class="stat-key">Messages</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val" id="stat-tokens">0</span>
+            <span class="stat-key">Est. Tokens</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val" id="stat-chars">0</span>
+            <span class="stat-key">Characters</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val" id="stat-time">—</span>
+            <span class="stat-key">Last Resp.</span>
+          </div>
         </div>
         <div class="token-bar-wrap">
-          <div class="token-bar-track"><div class="token-bar-fill" id="token-bar"></div></div>
+          <div class="token-bar-track">
+            <div class="token-bar-fill" id="token-bar"></div>
+          </div>
           <span class="token-bar-label" id="token-bar-label">0 / 128k ctx</span>
         </div>
       </div>
@@ -142,7 +164,9 @@
       <div class="chat-history" id="chat-history" role="list"></div>
 
       <div class="sidebar-footer">
-        <span class="powered-by">Free models via <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer">OpenRouter</a> · $0/request</span>
+        <span class="powered-by">
+          Free models via <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer">OpenRouter</a> · $0/request
+        </span>
       </div>
     </aside>
 
@@ -150,16 +174,28 @@
     <main class="main">
       <header class="topbar">
         <button class="icon-btn sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
         </button>
         <span class="topbar-title" id="topbar-title">New Chat</span>
         <div class="topbar-right">
           <span class="topbar-badge" id="topbar-model">Nemotron 120B</span>
           <button class="icon-btn" id="export-btn" title="Export as Markdown">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
           </button>
           <button class="icon-btn" id="clear-btn" title="Clear chat">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+            </svg>
           </button>
         </div>
       </header>
@@ -169,22 +205,65 @@
 
       <div class="input-area">
         <div class="input-box" id="input-box">
+
+          <!-- Attach button -->
           <button class="attach-btn" id="attach-btn" title="Attach image, txt, csv, xlsx, pdf, code…">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
           </button>
-          <input type="file" id="file-input" multiple accept="image/*,.txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.xlsx,.xls,.pdf,.sql,.sh,.jsx,.tsx,.go,.rs,.rb,.php" hidden />
-          <textarea id="chat-input" class="chat-textarea" placeholder="Message the AI… (Shift+Enter for newline)" rows="1" spellcheck="true"></textarea>
+
+          <input
+            type="file"
+            id="file-input"
+            multiple
+            accept="image/*,.txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.xlsx,.xls,.pdf,.sql,.sh,.jsx,.tsx,.go,.rs,.rb,.php"
+            hidden
+          />
+
+          <textarea
+            id="chat-input"
+            class="chat-textarea"
+            placeholder="Message the AI… (Shift+Enter for newline)"
+            rows="1"
+            spellcheck="true"
+          ></textarea>
+
+          <!-- Step 6: Web search toggle — sits between textarea and send -->
+          <button
+            class="icon-btn search-toggle-btn"
+            id="search-toggle-btn"
+            aria-label="Toggle web search"
+            aria-pressed="true"
+            title="Web search: ON"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+          </button>
+
+          <!-- Send button -->
           <button class="send-btn" id="send-btn" disabled>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
           </button>
+
         </div>
-        <p class="input-hint">All models are <strong>$0/request</strong> · Your API key stays in your browser only · <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Get OpenRouter key</a></p>
+        <p class="input-hint">
+          All models are <strong>$0/request</strong> · Your API key stays in your browser only ·
+          <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">Get OpenRouter key</a>
+        </p>
       </div>
     </main>
   </div>
+
   <div class="toast" id="toast" role="alert"></div>
-  <script src="./config.js" onerror="console.log('config.js not found, using sidebar key entry')"></script>
-  <script src="./config.js" onerror="window.APP_CONFIG=window.APP_CONFIG||{}"></script>
+
+  <!-- config.js — loads proxy URL / hardcoded key if present, silently skips if absent -->
+  <script src="./config.js" onerror="window.APP_CONFIG = window.APP_CONFIG || {}"></script>
   <script src="./assets/files.js"></script>
   <script src="./assets/ocr.js"></script>
   <script src="./assets/search.js"></script>
