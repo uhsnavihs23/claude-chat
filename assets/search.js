@@ -1,35 +1,51 @@
+// assets/search.js — web search context injection
+// Loaded before app.js. Exposes window.AppSearch
+
 (function () {
 
-  // ── Config ────────────────────────────────────────────────────────────────
-  const SEARCH_ENDPOINT = window.PROXY_URL || '';
+  // ── Config ─────────────────────────────────────────────────────────────
+  // Read proxy URL from config.js (APP_CONFIG) or fall back to the
+  // hardcoded value in app.js. We delay reading until first call so
+  // config.js has time to set window.APP_CONFIG.
+  function getEndpoint() {
+    return window.APP_CONFIG?.PROXY_URL
+      || 'https://dark-feather-5042.insightfulscroll.workers.dev';
+  }
 
-  // How many results to pull and inject
-  const MAX_RESULTS = 5;
+  const MAX_RESULTS   = 5;    // max results to inject into context
+  const MIN_QUERY_LEN = 12;   // ignore very short queries
 
-  // Minimum query length before attempting a search
-  const MIN_QUERY_LEN = 12;
-
-  // Patterns that strongly suggest real-time / factual lookup is needed
+  // ── Trigger patterns (search IS likely needed) ──────────────────────────
   const SEARCH_TRIGGERS = [
+    // time-sensitive keywords
     /\b(today|tonight|yesterday|this week|this month|this year|right now|currently|latest|recent|now|2024|2025|2026)\b/i,
-    /\b(news|weather|price|stock|score|result|winner|election|release|update|version|launch)\b/i,
-    /\b(who is|what is|when did|where is|how much|is it|will it|has .+? happened)\b/i,
-    /\b(search|look up|find out|google|check|browse|internet|web|online)\b/i,
-    /\?([\s\S]{0,200})$/,   // ends with a question
+    // news / live data
+    /\b(news|weather|price|stock|share price|score|result|winner|election|release|update|version|launch|announced|breaking)\b/i,
+    // factual lookup phrasing
+    /\b(who is|what is|when did|when was|where is|how much|is it|will it|has .+? happened|did .+? happen)\b/i,
+    // explicit search intent
+    /\b(search|look up|find out|google|check online|browse|internet|web|online)\b/i,
+    // ends with a question mark (factual questions)
+    /\?\s*$/,
   ];
 
-  // Topics that never benefit from a search (code, creative, math, etc.)
+  // ── Skip patterns (search NOT useful) ───────────────────────────────────
   const NO_SEARCH_PATTERNS = [
-    /^(write|create|generate|make|build|code|fix|debug|explain|translate|summarise|summarize|list|give me|show me|help me write)/i,
-    /^(def |function |class |import |SELECT |INSERT |UPDATE |<html|{)/,
-    /\b(regex|algorithm|function|script|code|formula|equation|calculate|convert)\b/i,
+    // creative / generative tasks
+    /^(write|create|generate|make|build|draft|compose|design)/i,
+    // coding tasks
+    /^(code|fix|debug|refactor|explain this|translate|summarise|summarize|list|give me|show me|help me write|convert this)/i,
+    // looks like code
+    /^(def |function |class |import |from |SELECT |INSERT |UPDATE |DELETE |<html|{|})/,
+    // math / algorithmic
+    /\b(regex|algorithm|function|script|formula|equation|calculate|compute|convert|parse)\b/i,
   ];
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────
 
   function shouldSearch(text) {
-    if (!text || text.length < MIN_QUERY_LEN) return false;
-    if (NO_SEARCH_PATTERNS.some(p => p.test(text))) return false;
+    if (!text || text.trim().length < MIN_QUERY_LEN) return false;
+    if (NO_SEARCH_PATTERNS.some(p => p.test(text.trim())))  return false;
     return SEARCH_TRIGGERS.some(p => p.test(text));
   }
 
@@ -38,33 +54,44 @@
 
     const lines = [
       `## Web Search Results`,
-      `Query: "${query}"`,
-      `Retrieved: ${new Date().toUTCString()}`,
-      ``,
+      `**Query:** "${query}"`,
+      `**Retrieved:** ${new Date().toUTCString()}`,
+      '',
     ];
 
     results.forEach((r, i) => {
-      lines.push(`**[${i + 1}] ${r.title}**`);
+      lines.push(`**[${i + 1}] ${r.title || 'Untitled'}**`);
       if (r.snippet) lines.push(r.snippet.trim());
-      if (r.url) lines.push(`Source: ${r.url}`);
+      if (r.url)     lines.push(`Source: ${r.url}`);
       lines.push('');
     });
 
     lines.push(
-      `---`,
-      `Use the above search results to inform your answer. `,
-      `Cite sources where relevant. If results are insufficient, say so.`
+      '---',
+      'Use the above search results to inform your answer.',
+      'Cite sources inline where relevant (e.g. "According to [1]…").',
+      'If the results are insufficient or outdated, say so clearly.'
     );
 
     return lines.join('\n');
   }
 
-  // ── Main API ──────────────────────────────────────────────────────────────
+  // Clean + shorten query for the search API
+  // (strip filler words, trim to 120 chars)
+  function buildSearchQuery(text) {
+    return text
+      .replace(/^(can you |please |could you |would you |i want to know |tell me )/i, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 120);
+  }
+
+  // ── Main Search object ───────────────────────────────────────────────────
 
   const Search = {
 
     /**
-     * Returns true if the query looks like it needs a web search.
+     * Returns true if the query looks like it needs a live web search.
      */
     needsSearch(text) {
       return shouldSearch(text);
@@ -75,33 +102,49 @@
      * Returns { results, source, query } or null on failure.
      */
     async query(text, num = MAX_RESULTS) {
-      if (!SEARCH_ENDPOINT) {
-        console.warn('[Search] No PROXY_URL — cannot search');
+      const endpoint = getEndpoint();
+      if (!endpoint) {
+        console.warn('[AppSearch] No proxy endpoint configured — cannot search.');
         return null;
       }
 
+      const q = buildSearchQuery(text);
+
       try {
-        const resp = await fetch(`${SEARCH_ENDPOINT}/search`, {
-          method: 'POST',
+        const resp = await fetch(`${endpoint}/search`, {
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: text, num })
+          body:    JSON.stringify({ q, num }),
+          signal:  AbortSignal.timeout(8000)   // 8-second hard timeout
         });
 
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}));
-          throw new Error(err?.error || `Search failed: ${resp.status}`);
+          throw new Error(err?.error || `Search HTTP ${resp.status}`);
         }
 
-        return await resp.json();
+        const data = await resp.json();
+        // Normalise — some backends return { results } others return array
+        if (Array.isArray(data))        return { results: data,         query: q, source: 'web' };
+        if (Array.isArray(data?.results)) return { results: data.results, query: data.query || q, source: data.source || 'web' };
+        return null;
+
       } catch (e) {
-        console.warn('[Search] Failed:', e.message);
+        if (e.name === 'TimeoutError') {
+          console.warn('[AppSearch] Search timed out after 8s');
+        } else {
+          console.warn('[AppSearch] Search failed:', e.message);
+        }
         return null;
       }
     },
 
     /**
-     * Full pipeline: check if needed → query → format as context string.
-     * Returns { contextBlock: string, searched: boolean, source: string }
+     * Full pipeline: decide → search → format context block.
+     * Called from app.js sendMessage().
+     *
+     * Returns:
+     *   { contextBlock: string, searched: boolean, source: string|null }
      */
     async prepareContext(userText) {
       if (!this.needsSearch(userText)) {
@@ -116,10 +159,31 @@
 
       return {
         contextBlock: formatResultsAsContext(data.results, data.query || userText),
-        searched: true,
-        source: data.source || 'web'
+        searched:     true,
+        source:       data.source || 'web'
       };
-    }
+    },
+
+    /**
+     * Force-search regardless of heuristics (called if user explicitly
+     * asks to search or search toggle is on and user typed a plain query).
+     */
+    async forceSearch(userText, num = MAX_RESULTS) {
+      const data = await this.query(userText, num);
+      if (!data?.results?.length) {
+        return { contextBlock: '', searched: false, source: null };
+      }
+      return {
+        contextBlock: formatResultsAsContext(data.results, data.query || userText),
+        searched:     true,
+        source:       data.source || 'web'
+      };
+    },
+
+    // Expose for testing / debugging in console
+    _shouldSearch:  shouldSearch,
+    _buildQuery:    buildSearchQuery,
+    _formatResults: formatResultsAsContext,
   };
 
   window.AppSearch = Search;
