@@ -1,70 +1,62 @@
-# ClaudeChat — Free Claude via Puter.js
+# AI Chat — Free OpenRouter Models
 
-A clean, modular chat UI using [Puter.js](https://puter.com) to access Claude models **for free** — no API key, no backend, no cost to you.
+A clean, modular chat app using **OpenRouter's free models**. Zero cost per message.
 
-## How It Works
+## 🚀 Quick Start
 
-Puter uses a **"User-Pays" model**: your users authenticate with their own Puter account, and Puter covers their AI usage costs. As a developer, you pay **nothing**.
+### Run Locally
+```bash
+# Option 1: Python (no install needed)
+cd claude-chat-v2
+python3 -m http.server 8000
+# Open http://localhost:8000
 
-- ✅ Free for developers to deploy
-- ✅ No API keys needed
-- ✅ Supports Claude Sonnet 4.6, Opus 4.7, Haiku 4.5 and more
-- ✅ Streaming responses
-- ✅ Chat history (in-memory per session)
-- ✅ Light + Dark mode
-
-## File Structure
-
+# Option 2: Just open index.html directly in browser
+open index.html
 ```
-puter-claude-chat/
-├── index.html        ← App shell (HTML structure only)
+
+### Deploy Free on GitHub Pages
+```bash
+git init
+git add .
+git commit -m "AI chat app"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/ai-chat.git
+git push -u origin main
+# Then: Settings → Pages → Source: Deploy from branch → main / (root)
+# Live at: https://YOUR_USERNAME.github.io/ai-chat/
+```
+
+### Deploy Free on Netlify
+Drag and drop the `claude-chat-v2/` folder to https://app.netlify.com/drop
+
+## 🔑 Getting Your Free OpenRouter Key
+1. Go to https://openrouter.ai/keys
+2. Sign up (free, no credit card for free models)
+3. Create a key
+4. Paste it into the sidebar of this app
+
+## 📁 File Structure
+```
+claude-chat-v2/
+├── index.html          ← App shell (HTML structure only)
 ├── assets/
-│   ├── style.css     ← All styling (design tokens, layout, components)
-│   └── app.js        ← All logic (state, Puter API calls, rendering)
+│   ├── style.css       ← All design tokens, dark/light mode, components
+│   └── app.js          ← All logic: API calls, streaming, file handling, history
 └── README.md
 ```
 
-## Run Locally
+## ✨ Features
+- 20+ free models (NVIDIA Nemotron, DeepSeek R1, Llama 4, Gemma 4, Qwen3…)
+- Real streaming responses (SSE)
+- File attachments: images, .py, .js, .csv, .json, .sql, .md and more
+- Drag & drop files + paste images from clipboard
+- Multi-session chat history
+- Session stats: token estimate, context bar, response time
+- Dark / light mode toggle
+- Export any chat as Markdown
+- System prompt customizable per session
+- Mobile responsive
 
-Just open `index.html` in any browser — no build step required.
-
-```bash
-# Option 1: Open directly
-open index.html
-
-# Option 2: Serve with Python (avoids any CORS issues)
-python3 -m http.server 8000
-# Visit http://localhost:8000
-```
-
-## Deploy to GitHub Pages (Free Hosting)
-
-1. Create a GitHub repo (can be private or public)
-2. Push all files:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-   git push -u origin main
-   ```
-3. Go to repo **Settings → Pages → Source → Deploy from branch → main / root**
-4. Your app is live at: `https://YOUR_USERNAME.github.io/YOUR_REPO/`
-
-## Available Models
-
-| Model | Speed | Intelligence |
-|---|---|---|
-| `claude-sonnet-4-6` | Fast | High ⭐ Recommended |
-| `claude-opus-4-7` | Slow | Highest |
-| `claude-haiku-4-5` | Fastest | Good |
-| `claude-opus-4-6` | Slow | Very High |
-| `claude-3-7-sonnet` | Fast | High |
-| `claude-3-5-sonnet` | Fast | High |
-
-## Important Caveats
-
-- Users need a **Puter account** for sustained use — anonymous usage may have lower rate limits
-- Puter could change pricing or availability — monitor [puter.com](https://puter.com)
-- Not suitable for backend/server-side code (Puter.js is browser-only)
-- Chat history is **in-memory only** — refreshing the page clears it (add localStorage if needed)
+## 🔒 Privacy
+Your API key never leaves your browser. It's stored in memory only (no localStorage).
