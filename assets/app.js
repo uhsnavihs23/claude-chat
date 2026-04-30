@@ -450,9 +450,10 @@ async function sendMessage() {
     }
 
     const imgFiles = files.filter(f => f.type === 'image');
-    if (imgFiles.length) {
+    if (imgFiles.length && !window.AppOCR.isMultimodal(model)) {
       apiContent += '\n\n[User attached image(s): ' + imgFiles.map(f => f.name).join(', ') + ']';
     }
+        
   }
 
   session.messages.push({ role: 'user', content: apiContent, files, displayContent: text });
@@ -498,6 +499,11 @@ async function sendMessage() {
     if (sys) apiMessages.push({ role: 'system', content: sys });
     session.messages.forEach(m => apiMessages.push({ role: m.role, content: m.content }));
 
+    // Inject real image payloads for vision/OCR models
+    const { messages: finalMessages, hasImages } = window.AppOCR.preparePayload(
+      model, apiMessages, files, text
+    );
+
     const endpoint = isProxyMode() ? PROXY_URL : OR_DIRECT;
     const headers = { 'Content-Type': 'application/json' };
 
@@ -512,7 +518,7 @@ async function sendMessage() {
       headers,
       body: JSON.stringify({
         model,
-        messages: apiMessages,
+        messages: finalMessages,
         stream: true
       })
     });
