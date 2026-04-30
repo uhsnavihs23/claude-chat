@@ -46,39 +46,67 @@
       <div class="field-group">
         <label class="field-label" for="model-select">Free Model</label>
         <div class="select-wrap">
-         
+
           <select id="model-select">
-            <optgroup label="🔥 Most Used">
-              <option value="nvidia/nemotron-3-nano-30b-a3b:free">NVIDIA Nemotron Nano 30B ⭐</option>
-              <option value="openai/gpt-oss-20b:free">OpenAI GPT-OSS 20B</option>
-              <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B</option>
-              <option value="poolside/laguna-m.1:free">Poolside Laguna M.1 (Coding)</option>
+
+            <!-- ══ FEATURED ══ -->
+            <optgroup label="🔥 Featured">
+              <option value="nvidia/nemotron-3-super-120b-a12b:free">NVIDIA Nemotron Super 120B ⭐</option>
+              <option value="openai/gpt-oss-120b:free">OpenAI GPT-OSS 120B</option>
+              <option value="inclusionai/ling-2.6-1t:free">Ling 2.6 1T (Largest Free)</option>
               <option value="meta-llama/llama-3.3-70b-instruct:free">Meta Llama 3.3 70B</option>
+              <option value="openai/gpt-oss-20b:free">OpenAI GPT-OSS 20B</option>
             </optgroup>
+
+            <!-- ══ CODING ══ -->
+            <optgroup label="💻 Coding">
+              <option value="qwen/qwen3-coder:free">Qwen3 Coder 480B A35B</option>
+              <option value="poolside/laguna-m.1:free">Poolside Laguna M.1</option>
+              <option value="poolside/laguna-xs.2:free">Poolside Laguna XS.2</option>
+              <option value="nvidia/nemotron-3-nano-30b-a3b:free">NVIDIA Nemotron Nano 30B</option>
+            </optgroup>
+
+            <!-- ══ REASONING ══ -->
             <optgroup label="🧠 Reasoning">
-              <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">NVIDIA Nemotron Nano Omni (Reasoning)</option>
-              <option value="qwen/qwen3-coder:free">Qwen3 Coder 480B</option>
-              <option value="qwen/qwen3-next-80b-a3b-instruct:free">Qwen3 Next 80B</option>
+              <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">NVIDIA Nemotron Omni (Reasoning)</option>
+              <option value="qwen/qwen3-next-80b-a3b-instruct:free">Qwen3 Next 80B A3B</option>
               <option value="liquid/lfm-2.5-1.2b-thinking:free">LiquidAI LFM2.5 Thinking</option>
             </optgroup>
-            <optgroup label="🌐 Google">
-              <option value="google/gemma-4-26b-a4b-it:free">Google Gemma 4 26B MoE</option>
-              <option value="google/gemma-3-27b-it:free">Google Gemma 3 27B</option>
-              <option value="google/gemma-3-12b-it:free">Google Gemma 3 12B</option>
-              <option value="google/gemma-3-4b-it:free">Google Gemma 3 4B ⚡</option>
-              <option value="google/gemma-3n-e4b-it:free">Google Gemma 3n 4B</option>
-              <option value="google/gemma-3n-e2b-it:free">Google Gemma 3n 2B</option>
+
+            <!-- ══ VISION / MULTIMODAL ══ -->
+            <optgroup label="🖼️ Vision / Multimodal">
+              <option value="tencent/hy3-preview:free">Tencent Hunyuan 3 Preview</option>
+              <option value="minimax/minimax-m2.5:free">MiniMax M2.5</option>
+              <option value="nvidia/nemotron-nano-12b-v2-vl:free">NVIDIA Nemotron 12B VL</option>
             </optgroup>
-            <optgroup label="🤖 Others">
+
+            <!-- ══ OCR / DOCUMENT ══ -->
+            <optgroup label="📄 OCR / Document">
+              <option value="baidu/qianfan-ocr-fast:free">Baidu Qianfan OCR Fast</option>
+            </optgroup>
+
+            <!-- ══ GOOGLE GEMMA ══ -->
+            <optgroup label="🌐 Google Gemma">
+              <option value="google/gemma-4-31b-it:free">Gemma 4 31B</option>
+              <option value="google/gemma-4-26b-a4b-it:free">Gemma 4 26B MoE</option>
+              <option value="google/gemma-3-27b-it:free">Gemma 3 27B</option>
+              <option value="google/gemma-3-12b-it:free">Gemma 3 12B</option>
+              <option value="google/gemma-3-4b-it:free">Gemma 3 4B ⚡</option>
+              <option value="google/gemma-3n-e4b-it:free">Gemma 3n 4B</option>
+              <option value="google/gemma-3n-e2b-it:free">Gemma 3n 2B</option>
+            </optgroup>
+
+            <!-- ══ OTHERS / FAST ══ -->
+            <optgroup label="🤖 Others / Fast">
+              <option value="z-ai/glm-4.5-air:free">Z.AI GLM 4.5 Air</option>
               <option value="nvidia/nemotron-nano-9b-v2:free">NVIDIA Nemotron Nano 9B</option>
-              <option value="nvidia/nemotron-nano-12b-v2-vl:free">NVIDIA Nemotron Nano 12B VL</option>
-              <option value="poolside/laguna-xs.2:free">Poolside Laguna XS.2</option>
-              <option value="meta-llama/llama-3.2-3b-instruct:free">Meta Llama 3.2 3B ⚡</option>
               <option value="nousresearch/hermes-3-llama-3.1-405b:free">Nous Hermes 3 405B</option>
               <option value="cognitivecomputations/dolphin-mistral-24b-venice-edition:free">Venice Uncensored</option>
               <option value="liquid/lfm-2.5-1.2b-instruct:free">LiquidAI LFM2.5 Instruct</option>
+              <option value="meta-llama/llama-3.2-3b-instruct:free">Meta Llama 3.2 3B ⚡</option>
               <option value="openrouter/free">⚡ Auto Free Router</option>
             </optgroup>
+
           </select>
           <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
@@ -141,10 +169,10 @@
 
       <div class="input-area">
         <div class="input-box" id="input-box">
-          <button class="attach-btn" id="attach-btn" title="Attach image, txt, csv, code…">
+          <button class="attach-btn" id="attach-btn" title="Attach image, txt, csv, xlsx, pdf, code…">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
-          <input type="file" id="file-input" multiple accept="image/*,.txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml" hidden />
+          <input type="file" id="file-input" multiple accept="image/*,.txt,.md,.csv,.json,.py,.js,.ts,.html,.css,.xml,.yaml,.yml,.xlsx,.xls,.pdf,.sql,.sh,.jsx,.tsx,.go,.rs,.rb,.php" hidden />
           <textarea id="chat-input" class="chat-textarea" placeholder="Message the AI… (Shift+Enter for newline)" rows="1" spellcheck="true"></textarea>
           <button class="send-btn" id="send-btn" disabled>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
