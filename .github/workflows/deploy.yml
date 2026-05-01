@@ -1,26 +1,87 @@
+# .github/workflows/deploy.yml
+# Deploys the static claude-chat app to GitHub Pages on every push to main.
+
 name: Deploy to GitHub Pages
+
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:          # allow manual trigger from Actions tab
+
 permissions:
   contents: read
-  pages: write
+  pages:    write
   id-token: write
+
+# Only one deployment runs at a time; queued runs wait, not cancel.
 concurrency:
-  group: pages
+  group:              pages
   cancel-in-progress: false
+
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # ── Optional: fast sanity check before deploying ──────────────────────
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          required=(
+            "index.html"
+            "assets/app.js"
+            "assets/style.css"
+            "assets/ocr.js"
+            "assets/search.js"
+            "assets/files.js"
+          )
+          missing=0
+          for f in "${required[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "❌ Missing: $f"
+              missing=1
+            else
+              echo "✅ Found:   $f"
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo ""
+            echo "One or more required files are missing. Aborting deploy."
+            exit 1
+          fi
+
+      - name: Check for syntax errors in JS files
+        run: |
+          # node is pre-installed on ubuntu-latest
+          for f in assets/*.js; do
+            node --check "$f" \
+              && echo "✅ OK:      $f" \
+              || { echo "❌ Syntax error in $f"; exit 1; }
+          done
+
+  # ── Deploy ────────────────────────────────────────────────────────────
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url:  ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
+          # Deploy everything except dev/meta files
           path: '.'
-      - id: deployment
+
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
