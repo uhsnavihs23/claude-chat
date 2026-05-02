@@ -1,4 +1,4 @@
-// assets/app.js  — claude-chat v2.4
+// assets/app.js  — claude-chat v2.5
 // Depends on: assets/files.js, assets/search.js, assets/ocr.js (loaded before this)
 
 (() => {
@@ -24,23 +24,14 @@ const MODEL_CAPS = {
   'nvidia/nemotron-nano-12b-v2-vl:free':             131072,
   'nvidia/nemotron-3-nano-30b-a3b:free':             131072,
   'nvidia/nemotron-nano-9b-v2:free':                 131072,
-  'nvidia/nemotron-3-nano-omni:free':                131072,
-  'nvidia/llama-nemotron-super-70b-instruct:free':   131072,
-  'nvidia/llama-nemotron-embed-vl-1b-v2:free':         4096,
-  'qwen/qwen3-coder-480b-a35b:free':                 131072,
   'qwen/qwen3-235b-a22b:free':                       131072,
-  'qwen/qwen3-next-80b-a3b:free':                    131072,
-  'nous/hermes-3-405b-instruct:free':                131072,
   'baidu/qianfan-ocr-fast:free':                       4096,
   'liquid/lfm2.5-1.2b-thinking:free':                32768,
-  'liquid/lfm2.5-1.2b-instruct:free':                32768,
-  'poolside/laguna-m1:free':                         131072,
-  'poolside/laguna-xs2:free':                        131072,
   'openai/gpt-4o-mini-search-preview:free':          128000,
-  'venice-ai/venice-uncensored:free':                131072,
 };
 
 // ── Fallback model list (used if /models fetch fails) ────────────
+// Only confirmed-working free chat models as of May 2026
 const FALLBACK_MODELS = [
   { id: 'meta-llama/llama-3.3-70b-instruct:free',       name: 'Meta: Llama 3.3 70B',            context: 131072 },
   { id: 'meta-llama/llama-3.2-3b-instruct:free',        name: 'Meta: Llama 3.2 3B',             context: 131072 },
@@ -54,20 +45,10 @@ const FALLBACK_MODELS = [
   { id: 'nvidia/nemotron-3-nano-30b-a3b:free',          name: 'NVIDIA: Nemotron 3 Nano 30B',    context: 131072 },
   { id: 'nvidia/nemotron-nano-9b-v2:free',              name: 'NVIDIA: Nemotron Nano 9B V2',    context: 131072 },
   { id: 'nvidia/nemotron-nano-12b-v2-vl:free',          name: 'NVIDIA: Nemotron Nano 12B VL',   context: 131072 },
-  { id: 'nvidia/nemotron-3-nano-omni:free',             name: 'NVIDIA: Nemotron 3 Nano Omni',   context: 131072 },
-  { id: 'nvidia/llama-nemotron-super-70b-instruct:free',name: 'NVIDIA: Nemotron Super 70B',     context: 131072 },
-  { id: 'nvidia/llama-nemotron-embed-vl-1b-v2:free',   name: 'NVIDIA: Nemotron Embed VL 1B',   context: 4096   },
-  { id: 'qwen/qwen3-coder-480b-a35b:free',              name: 'Qwen: Qwen3 Coder 480B',         context: 131072 },
   { id: 'qwen/qwen3-235b-a22b:free',                    name: 'Qwen3 235B A22B',                context: 131072 },
-  { id: 'qwen/qwen3-next-80b-a3b:free',                 name: 'Qwen: Qwen3 Next 80B',           context: 131072 },
-  { id: 'nous/hermes-3-405b-instruct:free',             name: 'Nous: Hermes 3 405B',            context: 131072 },
   { id: 'liquid/lfm2.5-1.2b-thinking:free',             name: 'LiquidAI: LFM2.5 1.2B Thinking', context: 32768  },
-  { id: 'liquid/lfm2.5-1.2b-instruct:free',             name: 'LiquidAI: LFM2.5 1.2B Instruct', context: 32768  },
-  { id: 'poolside/laguna-m1:free',                      name: 'Poolside: Laguna M.1',           context: 131072 },
-  { id: 'poolside/laguna-xs2:free',                     name: 'Poolside: Laguna XS.2',          context: 131072 },
   { id: 'baidu/qianfan-ocr-fast:free',                  name: 'Baidu: Qianfan OCR Fast',        context: 4096   },
-  { id: 'venice-ai/venice-uncensored:free',             name: 'Venice: Uncensored',             context: 131072 },
-  { id: 'openrouter/auto',                              name: 'Free Models Router',             context: 128000 },
+  { id: 'openai/gpt-4o-mini-search-preview:free',       name: 'OpenAI: GPT-4o Mini Search',     context: 128000 },
 ];
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -188,7 +169,7 @@ function renderMd(text) {
   // GFM tables
   s = s.replace(/((?:\|.+\|\n?)+)/g, block => {
     const rows = block.trim().split('\n').map(r =>
-      r.trim().replace(/^\||\|$/g,'').split('|').map(c => c.trim())
+      r.trim().replace(/^\||\\|$/g,'').split('|').map(c => c.trim())
     );
     if (rows.length < 2) return block;
     const isSep = r => r.every(c => /^:?-+:?$/.test(c));
@@ -273,7 +254,13 @@ async function loadModels() {
     const res  = await fetch(`${PROXY_URL}/models`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const list = (data.data || []).filter(m => m.id);
+    // Filter out embedding models and non-chat models from live list
+    const list = (data.data || []).filter(m =>
+      m.id &&
+      !m.id.includes('embed') &&
+      !m.id.includes('ocr') &&
+      m.id !== 'openrouter/auto'
+    );
 
     if (list.length) {
       state.models     = list;
@@ -310,20 +297,10 @@ function populateModelSelect(models) {
 
   sel.innerHTML = '';
 
-  const router = models.find(m => m.id === 'openrouter/auto');
-  if (router) {
-    const opt       = document.createElement('option');
-    opt.value       = router.id;
-    opt.textContent = '⚡ ' + (router.name || 'Free Models Router');
-    sel.appendChild(opt);
-  }
-
   Object.keys(groups).sort().forEach(provider => {
     const grp   = document.createElement('optgroup');
     grp.label   = provider;
-    groups[provider]
-      .filter(m => m.id !== 'openrouter/auto')
-      .forEach(m => {
+    groups[provider].forEach(m => {
         const opt       = document.createElement('option');
         opt.value       = m.id;
         const cap       = window.AppOCR?.capabilityLabel(m.id);
@@ -533,7 +510,7 @@ function renderFileStrip() {
   strip.hidden    = false;
   strip.innerHTML = state.pendingFiles.map((f, i) => {
     const imgTag = f.type === 'image'
-      ? `<img src="${f.dataUrl}" alt="" width="22" height="22" style="border-radius:var(--r-sm);object-fit:cover;">`
+      ? `<img src="${f.dataUrl}" alt="" width="22" height="22" style="border-radius:var(--radius-sm);object-fit:cover;">`
       : '<span>📎</span>';
     return `<div class="file-preview">
       ${imgTag}
@@ -710,7 +687,7 @@ async function sendMessage() {
   } catch (err) {
     aiMsg.content = `⚠️ ${err.message || 'Failed to fetch'}`;
     if (msgEl) msgEl.innerHTML =
-      `<span style="color:var(--tx3)">⚠️ ${escHtml(err.message || 'Failed to fetch')}</span>`;
+      `<span style="color:var(--color-error)">⚠️ ${escHtml(err.message || 'Failed to fetch')}</span>`;
     showToast(err.message || 'Request failed', 'error');
   }
 
