@@ -14,8 +14,7 @@
   --sp1:.25rem; --sp2:.5rem;  --sp3:.75rem; --sp4:1rem;
   --sp5:1.25rem;--sp6:1.5rem; --sp8:2rem;   --sp10:2.5rem;
 
-  /* Border radius — short names (used throughout CSS)
-     AND long aliases (used by app.js inline styles) */
+  /* Border radius — short names AND long aliases */
   --r-sm:.3rem;  --r-md:.5rem;  --r-lg:.8rem;  --r-xl:1.1rem; --r-full:9999px;
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);
@@ -169,16 +168,19 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
   opacity: 0; pointer-events: none; border: none;
 }
 
-/* Topbar hamburger: visible only when sidebar is collapsed */
-#sidebarOpen {
-  display: none;
-}
-.sidebar.collapsed ~ .main #sidebarOpen,
-.sidebar.collapsed + .main #sidebarOpen {
-  display: flex;
-}
+/*
+  #sidebarOpen: the topbar hamburger that re-opens the sidebar.
+  Hidden by default. Shown when:
+    a) .sidebar has class .collapsed  (desktop collapse)
+    b) On mobile (≤640px) — always visible so user can open sidebar
+  Controlled by JS: openSidebar()/closeSidebar() add/remove .collapsed.
+  We use .app-shell.sidebar-collapsed as a class JS adds to the shell
+  so we can target #sidebarOpen without a CSS sibling selector hack.
+*/
+#sidebarOpen { display: none; }
+.app-shell.sidebar-collapsed #sidebarOpen { display: flex; }
 
-/* Mobile backdrop — appears behind sidebar when open on small screens */
+/* Mobile backdrop — shown when sidebar is open on small screens */
 .sidebar-backdrop {
   display:    none;
   position:   fixed;
@@ -389,6 +391,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
   min-width:      0;
   overflow:       hidden;
   background:     var(--bg);
+  position:       relative;  /* needed so backdrop z-index stacks correctly */
 }
 
 /* ── Topbar ── */
@@ -400,6 +403,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
   border-bottom: 1px solid var(--bd);
   background:  var(--sf);
   flex-shrink: 0;
+  z-index:     10;
 }
 .topbar-title {
   font-size:     var(--text-sm);
@@ -794,8 +798,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
 .chat-textarea::placeholder { color: var(--tx3); }
 
 /* ── Web search toggle ──
-   Green dot activates via BOTH aria-pressed="true" AND data-search-active="true"
-   (app.js sets both; CSS reacts to either) */
+   Green dot activates when aria-pressed="true" OR data-search-active="true" */
 .search-toggle-btn { position: relative; transition: color 180ms, opacity 180ms; }
 .search-toggle-btn[aria-pressed="true"],
 .search-toggle-btn[data-search-active="true"]  { color: var(--ac); }
@@ -890,17 +893,16 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
     height:     100dvh;
     box-shadow: var(--sh3);
     z-index:    50;
-    /* When open on mobile, always show the hamburger in topbar
-       so user can collapse — handled by JS adding .collapsed */
+    transition: transform var(--dur) var(--ease),
+                opacity   var(--dur) var(--ease);
   }
-  /* On mobile, sidebar starts collapsed (JS sets this on init) */
-  .sidebar.collapsed  { width: 0; min-width: 0; padding: 0; transform: translateX(-100%); }
-  /* When sidebar is open on mobile, show backdrop */
-  .sidebar:not(.collapsed) ~ .main .sidebar-backdrop,
-  .sidebar:not(.collapsed) + .main .sidebar-backdrop {
-    display: block;
+  /* Collapsed: slide off-screen */
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    width: var(--sw); min-width: var(--sw); padding: var(--sp4);
+    opacity: 0; pointer-events: none;
   }
-  /* On mobile, ALWAYS show the hamburger open button */
+  /* On mobile, ALWAYS show the topbar hamburger */
   #sidebarOpen { display: flex !important; }
 
   .suggestions        { flex-direction: column; }

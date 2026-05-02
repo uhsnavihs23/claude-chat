@@ -1,14 +1,14 @@
-// assets/app.js  — claude-chat v2.3
+// assets/app.js  — claude-chat v2.4
 // Depends on: assets/files.js, assets/search.js, assets/ocr.js (loaded before this)
 
 (() => {
 'use strict';
 
-// ── Config ───────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────
 const PROXY_URL = window.APP_CONFIG?.PROXY_URL
   || 'https://dark-feather-5042.insightfulscroll.workers.dev';
 
-// ── Model caps (context window in tokens) ──────────────────────────────────
+// ── Model caps (context window in tokens) ────────────────────
 const MODEL_CAPS = {
   'default':                                         128000,
   'google/gemma-4-31b-it:free':                      131072,
@@ -40,7 +40,7 @@ const MODEL_CAPS = {
   'venice-ai/venice-uncensored:free':                131072,
 };
 
-// ── Fallback model list (used if /models fetch fails) ────────────────────────
+// ── Fallback model list (used if /models fetch fails) ────────────
 const FALLBACK_MODELS = [
   { id: 'meta-llama/llama-3.3-70b-instruct:free',       name: 'Meta: Llama 3.3 70B',            context: 131072 },
   { id: 'meta-llama/llama-3.2-3b-instruct:free',        name: 'Meta: Llama 3.2 3B',             context: 131072 },
@@ -70,7 +70,7 @@ const FALLBACK_MODELS = [
   { id: 'openrouter/auto',                              name: 'Free Models Router',             context: 128000 },
 ];
 
-// ── State ────────────────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────────────────────────
 const state = {
   sessions:       {},
   currentId:      null,
@@ -81,9 +81,10 @@ const state = {
   modelsLoaded:   false,
 };
 
-// ── DOM refs ───────────────────────────────────────────────────────
+// ── DOM refs ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const DOM = {
+  appShell:        () => document.querySelector('.app-shell'),
   sidebar:         () => document.querySelector('.sidebar'),
   sidebarBackdrop: () => $('sidebarBackdrop'),
   messages:        () => $('messages'),
@@ -106,31 +107,28 @@ const DOM = {
   historyList:     () => $('historyList'),
   searchToggle:    () => $('searchToggle'),
   newChatBtn:      () => $('newChatBtn'),
-  sidebarToggle:   () => $('sidebarToggle'),  // collapse btn (in sidebar)
+  sidebarToggle:   () => $('sidebarToggle'),  // collapse btn (inside sidebar)
   sidebarOpen:     () => $('sidebarOpen'),    // open btn (in topbar)
   toast:           () => $('toast'),
   themeToggle:     () => $('themeToggle'),
 };
 
-// ── Sidebar helpers ─────────────────────────────────────────────────
+// ── Sidebar helpers ─────────────────────────────────────────────────────────
 function openSidebar() {
   DOM.sidebar()?.classList.remove('collapsed');
   DOM.sidebarBackdrop()?.classList.add('active');
+  DOM.appShell()?.classList.remove('sidebar-collapsed');
 }
 
 function closeSidebar() {
   DOM.sidebar()?.classList.add('collapsed');
   DOM.sidebarBackdrop()?.classList.remove('active');
+  DOM.appShell()?.classList.add('sidebar-collapsed');
 }
 
-function toggleSidebar() {
-  const sidebar = DOM.sidebar();
-  if (!sidebar) return;
-  if (sidebar.classList.contains('collapsed')) openSidebar();
-  else closeSidebar();
-}
+function isMobile() { return window.innerWidth <= 640; }
 
-// ── Utilities ──────────────────────────────────────────────────────
+// ── Utilities ────────────────────────────────────────────────────────────────
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 function showToast(msg, type = '', duration = 3200) {
@@ -156,7 +154,7 @@ function escHtml(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Dark / light theme ──────────────────────────────────────────────
+// ── Dark / light theme ──────────────────────────────────────────────────────
 (function initTheme() {
   const saved = localStorage.getItem('theme');
   const pref  = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -172,7 +170,7 @@ function toggleTheme() {
   if (btn) btn.setAttribute('aria-label', `Switch to ${cur} mode`);
 }
 
-// ── Markdown renderer ───────────────────────────────────────────────
+// ── Markdown renderer ────────────────────────────────────────────────────────
 function renderMd(text) {
   let s = text || '';
 
@@ -266,7 +264,7 @@ window.copyCode = function(id) {
   navigator.clipboard.writeText(el.textContent).then(() => showToast('Copied!', 'success', 1800));
 };
 
-// ── Dynamic model loading ───────────────────────────────────────────────
+// ── Dynamic model loading ─────────────────────────────────────────────────────
 async function loadModels() {
   const sel = DOM.modelSelect();
   if (!sel) return;
@@ -281,7 +279,6 @@ async function loadModels() {
       state.models     = list;
       state.modelsLoaded = true;
 
-      // Register vision-capable models with AppOCR so images route correctly
       if (window.AppOCR) {
         list.forEach(m => {
           if (m.capabilities?.vision) window.AppOCR.registerVisionModel(m.id);
@@ -296,7 +293,6 @@ async function loadModels() {
     console.warn('[claude-chat] Model fetch failed, using fallback list:', e.message);
   }
 
-  // Fallback
   state.models = FALLBACK_MODELS;
   populateModelSelect(FALLBACK_MODELS);
 }
@@ -306,7 +302,6 @@ function populateModelSelect(models) {
   if (!sel) return;
   const saved = sel.value || localStorage.getItem('selectedModel') || '';
 
-  // Group by provider prefix
   const groups = {};
   models.forEach(m => {
     const provider = (m.name || m.id).split(':')[0].split('/')[0].split(' ')[0] || 'Other';
@@ -315,7 +310,6 @@ function populateModelSelect(models) {
 
   sel.innerHTML = '';
 
-  // Free Models Router first
   const router = models.find(m => m.id === 'openrouter/auto');
   if (router) {
     const opt       = document.createElement('option');
@@ -339,13 +333,12 @@ function populateModelSelect(models) {
     if (grp.children.length) sel.appendChild(grp);
   });
 
-  // Restore saved selection
   if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
 
   updateTopbarBadge();
 }
 
-// ── Sessions ─────────────────────────────────────────────────────────
+// ── Sessions ──────────────────────────────────────────────────────────────────
 function newSession() {
   const id = genId();
   state.sessions[id] = { id, title: 'New chat', messages: [], tokenCount: 0, createdAt: Date.now() };
@@ -364,7 +357,7 @@ function switchSession(id) {
 
 function currentSession() { return state.sessions[state.currentId]; }
 
-// ── History sidebar ─────────────────────────────────────────────────────
+// ── History sidebar ────────────────────────────────────────────────────────────
 function renderHistory() {
   const list = DOM.historyList();
   if (!list) return;
@@ -374,14 +367,13 @@ function renderHistory() {
           data-sid="${s.id}"
           title="${escHtml(s.title)}">${escHtml(s.title)}</div>`
   ).join('');
-  // Delegate clicks
   list.querySelectorAll('.history-item').forEach(el => {
     el.addEventListener('click', () => switchSession(el.dataset.sid));
   });
 }
 window.switchSession = switchSession;
 
-// ── Message rendering ───────────────────────────────────────────────────
+// ── Message rendering ──────────────────────────────────────────────────────────
 function renderMessages() {
   const wrap = DOM.messages();
   if (!wrap) return;
@@ -466,7 +458,7 @@ window.copyMsg = function(id) {
   navigator.clipboard.writeText(msg.content || '').then(() => showToast('Copied!', 'success', 1800));
 };
 
-// ── Stats + token bar ──────────────────────────────────────────────────
+// ── Stats + token bar ─────────────────────────────────────────────────────────
 function updateStats() {
   const sess     = currentSession();
   if (!sess) return;
@@ -494,7 +486,7 @@ function updateTopbarBadge() {
   badge.title       = modelId;
 }
 
-// ── File handling ────────────────────────────────────────────────────────
+// ── File handling ─────────────────────────────────────────────────────────────
 function handleFiles(fileList) {
   [...fileList].forEach(async file => {
     const lower = file.name.toLowerCase();
@@ -550,7 +542,6 @@ function renderFileStrip() {
     </div>`;
   }).join('');
 
-  // Delegate remove clicks
   strip.querySelectorAll('.file-remove-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       state.pendingFiles.splice(Number(btn.dataset.idx), 1);
@@ -559,7 +550,7 @@ function renderFileStrip() {
   });
 }
 
-// ── Build API messages ──────────────────────────────────────────────────
+// ── Build API messages ────────────────────────────────────────────────────────
 function buildApiMessages(sess, sysPrompt, userText) {
   const msgs = [];
 
@@ -586,7 +577,7 @@ function buildApiMessages(sess, sysPrompt, userText) {
   return msgs;
 }
 
-// ── Send message ───────────────────────────────────────────────────────
+// ── Send message ──────────────────────────────────────────────────────────────
 async function sendMessage() {
   if (state.streaming) return;
 
@@ -603,7 +594,6 @@ async function sendMessage() {
   const btn = DOM.sendBtn();
   if (btn) btn.disabled = true;
   if (ta)  { ta.value = ''; autoResizeTextarea(ta); }
-  if (btn) btn.disabled = true;
 
   const imageUrls = state.pendingFiles.filter(f => f.type === 'image').map(f => f.dataUrl);
   const fileNames = state.pendingFiles.filter(f => f.type !== 'image').map(f => f.name);
@@ -621,10 +611,8 @@ async function sendMessage() {
   sess.tokenCount = (sess.tokenCount || 0) + approxTokens(userText);
   renderMessages();
 
-  // Build API messages
   let apiMessages = buildApiMessages(sess, sysPrompt, userText);
 
-  // OCR / vision payloads
   if (window.AppOCR) {
     const { messages, hasImages } =
       await window.AppOCR.preparePayload(model, apiMessages, state.pendingFiles, userText);
@@ -637,7 +625,6 @@ async function sendMessage() {
     }
   }
 
-  // Web search context
   let searched = false;
   if (window.AppSearch) {
     const doSearch = state.searchEnabled || window.AppSearch.needsSearch?.(userText);
@@ -657,11 +644,9 @@ async function sendMessage() {
     }
   }
 
-  // Clear pending files AFTER building messages
   state.pendingFiles = [];
   renderFileStrip();
 
-  // Streaming placeholder
   const aiMsgId = genId();
   const aiMsg   = { id: aiMsgId, role: 'assistant', content: '', ts: Date.now(), model, searched };
   sess.messages.push(aiMsg);
@@ -700,7 +685,7 @@ async function sendMessage() {
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete line
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
@@ -714,11 +699,10 @@ async function sendMessage() {
             msgEl.innerHTML = renderMd(full) + '<span class="streaming-cursor"></span>';
             DOM.messages().scrollTop = DOM.messages().scrollHeight;
           }
-        } catch { /* malformed SSE chunk — skip */ }
+        } catch { /* malformed SSE chunk */ }
       }
     }
 
-    // Finalise — remove streaming cursor
     aiMsg.content = full;
     if (msgEl) msgEl.innerHTML = renderMd(full);
     sess.tokenCount = (sess.tokenCount || 0) + approxTokens(full);
@@ -737,7 +721,7 @@ async function sendMessage() {
   saveState();
 }
 
-// ── Export chat ───────────────────────────────────────────────────────
+// ── Export chat ───────────────────────────────────────────────────────────────
 function exportChat() {
   const sess = currentSession();
   if (!sess?.messages?.length) { showToast('Nothing to export', 'error'); return; }
@@ -761,7 +745,7 @@ function exportChat() {
   showToast('Chat exported!', 'success');
 }
 
-// ── Persistence ────────────────────────────────────────────────────────
+// ── Persistence ───────────────────────────────────────────────────────────────
 function saveState() {
   try {
     localStorage.setItem('cc_state', JSON.stringify({
@@ -783,13 +767,13 @@ function loadState() {
   } catch {}
 }
 
-// ── Textarea auto-resize ────────────────────────────────────────────────
+// ── Textarea auto-resize ──────────────────────────────────────────────────────
 function autoResizeTextarea(ta) {
   ta.style.height = 'auto';
   ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
 }
 
-// ── API key validation ────────────────────────────────────────────────
+// ── API key validation ────────────────────────────────────────────────────────
 function validateKey(key) {
   const status = DOM.keyStatus();
   if (!status) return;
@@ -804,7 +788,7 @@ function validateKey(key) {
   }
 }
 
-// ── Init ──────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   loadState();
 
@@ -814,6 +798,11 @@ async function init() {
 
   const savedKey = localStorage.getItem('cc_key');
   if (savedKey && DOM.keyInput()) DOM.keyInput().value = savedKey;
+
+  // On mobile: start with sidebar collapsed
+  if (isMobile()) {
+    closeSidebar();
+  }
 
   showToast('Loading models…', '', 5000);
   await loadModels();
@@ -858,13 +847,13 @@ async function init() {
     saveState();
   });
 
-  // Sidebar collapse (inside sidebar) — closes sidebar
+  // Sidebar: collapse button (inside sidebar) closes it
   DOM.sidebarToggle()?.addEventListener('click', closeSidebar);
 
-  // Sidebar open (topbar hamburger) — opens sidebar
+  // Sidebar: open button (topbar hamburger) opens it
   DOM.sidebarOpen()?.addEventListener('click', openSidebar);
 
-  // Backdrop tap — closes sidebar on mobile
+  // Backdrop tap closes sidebar on mobile
   DOM.sidebarBackdrop()?.addEventListener('click', closeSidebar);
 
   // Theme
@@ -894,6 +883,13 @@ async function init() {
     inputBox.classList.remove('drag-over');
     if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   });
+
+  // Close sidebar on mobile when user navigates to a chat
+  const origSwitch = window.switchSession;
+  window.switchSession = function(id) {
+    origSwitch(id);
+    if (isMobile()) closeSidebar();
+  };
 
   renderMessages();
   renderHistory();
