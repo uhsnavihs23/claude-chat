@@ -1,68 +1,87 @@
-// assets/app.js  — claude-chat v2.1
+// assets/app.js  — claude-chat v2.2
 // Depends on: assets/files.js, assets/search.js, assets/ocr.js (loaded before this)
 
 (() => {
 'use strict';
 
-// ── Config ────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────
 const PROXY_URL = window.APP_CONFIG?.PROXY_URL
   || 'https://dark-feather-5042.insightfulscroll.workers.dev';
 
-// ── Model caps (context window in tokens) ─────────────────────
+// ── Model caps (context window in tokens) ────────────────────
 const MODEL_CAPS = {
-  'default':                                    128000,
-  'google/gemma-4-31b-it:free':                 128000,
-  'google/gemma-4-26b-a4b-it:free':             128000,
-  'google/gemma-3-27b-it:free':                 131072,
-  'google/gemma-3-12b-it:free':                 131072,
-  'google/gemma-3-4b-it:free':                  131072,
-  'google/gemma-3n-e4b-it:free':                131072,
-  'google/gemma-3n-e2b-it:free':                131072,
-  'meta-llama/llama-3.3-70b-instruct:free':     131072,
-  'meta-llama/llama-3.2-3b-instruct:free':      131072,
-  'meta-llama/llama-3.2-11b-vision-instruct:free': 131072,
-  'nvidia/nemotron-nano-12b-v2-vl:free':         131072,
-  'nvidia/llama-nemotron-super-70b-instruct:free': 131072,
-  'qwen/qwen3-coder-480b-a35b:free':             131072,
-  'qwen/qwen3-235b-a22b:free':                   131072,
-  'nous/hermes-3-405b-instruct:free':            131072,
-  'baidu/qianfan-ocr-fast:free':                  4096,
-  'openai/gpt-4o-mini-search-preview:free':      128000,
+  'default':                                         128000,
+  'google/gemma-4-31b-it:free':                      131072,
+  'google/gemma-4-26b-a4b-it:free':                  131072,
+  'google/gemma-3-27b-it:free':                      131072,
+  'google/gemma-3-12b-it:free':                      131072,
+  'google/gemma-3-4b-it:free':                       131072,
+  'google/gemma-3n-e4b-it:free':                     131072,
+  'google/gemma-3n-e2b-it:free':                     131072,
+  'meta-llama/llama-3.3-70b-instruct:free':          131072,
+  'meta-llama/llama-3.2-3b-instruct:free':           131072,
+  'meta-llama/llama-3.2-11b-vision-instruct:free':   131072,
+  'nvidia/nemotron-nano-12b-v2-vl:free':             131072,
+  'nvidia/nemotron-3-nano-30b-a3b:free':             131072,
+  'nvidia/nemotron-nano-9b-v2:free':                 131072,
+  'nvidia/nemotron-3-nano-omni:free':                131072,
+  'nvidia/llama-nemotron-super-70b-instruct:free':   131072,
+  'nvidia/llama-nemotron-embed-vl-1b-v2:free':         4096,
+  'qwen/qwen3-coder-480b-a35b:free':                 131072,
+  'qwen/qwen3-235b-a22b:free':                       131072,
+  'qwen/qwen3-next-80b-a3b:free':                    131072,
+  'nous/hermes-3-405b-instruct:free':                131072,
+  'baidu/qianfan-ocr-fast:free':                       4096,
+  'liquid/lfm2.5-1.2b-thinking:free':                32768,
+  'liquid/lfm2.5-1.2b-instruct:free':                32768,
+  'poolside/laguna-m1:free':                         131072,
+  'poolside/laguna-xs2:free':                        131072,
+  'openai/gpt-4o-mini-search-preview:free':          128000,
+  'venice-ai/venice-uncensored:free':                131072,
 };
 
-// ── Fallback model list (used if /models fetch fails) ─────────
+// ── Fallback model list (used if /models fetch fails) ────────────
 const FALLBACK_MODELS = [
-  { id: 'meta-llama/llama-3.3-70b-instruct:free',    name: 'Meta: Llama 3.3 70B',        context: 131072 },
-  { id: 'meta-llama/llama-3.2-3b-instruct:free',     name: 'Meta: Llama 3.2 3B',         context: 131072 },
-  { id: 'google/gemma-3-27b-it:free',                name: 'Google: Gemma 3 27B',         context: 131072 },
-  { id: 'google/gemma-3-12b-it:free',                name: 'Google: Gemma 3 12B',         context: 131072 },
-  { id: 'google/gemma-3-4b-it:free',                 name: 'Google: Gemma 3 4B',          context: 131072 },
-  { id: 'google/gemma-3n-e4b-it:free',               name: 'Google: Gemma 3n 4B',         context: 131072 },
-  { id: 'google/gemma-3n-e2b-it:free',               name: 'Google: Gemma 3n 2B',         context: 131072 },
-  { id: 'google/gemma-4-31b-it:free',                name: 'Google: Gemma 4 31B',         context: 128000 },
-  { id: 'google/gemma-4-26b-a4b-it:free',            name: 'Google: Gemma 4 26B A4B',     context: 128000 },
-  { id: 'nvidia/nemotron-nano-12b-v2-vl:free',       name: 'NVIDIA: Nemotron Nano 12B VL',context: 131072 },
-  { id: 'nvidia/llama-nemotron-super-70b-instruct:free', name: 'NVIDIA: Nemotron Super 70B', context: 131072 },
-  { id: 'nvidia/llama-nemotron-embed-vl-1b-v2:free', name: 'NVIDIA: Nemotron Embed VL 1B',context: 4096   },
-  { id: 'nous/hermes-3-405b-instruct:free',          name: 'Nous: Hermes 3 405B',         context: 131072 },
-  { id: 'qwen/qwen3-coder-480b-a35b:free',           name: 'Qwen3 Coder 480B',            context: 131072 },
-  { id: 'qwen/qwen3-235b-a22b:free',                 name: 'Qwen3 235B A22B',             context: 131072 },
-  { id: 'baidu/qianfan-ocr-fast:free',               name: 'Baidu: Qianfan OCR Fast',     context: 4096   },
-  { id: 'openrouter/auto',                           name: 'Free Models Router',           context: 128000 },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free',       name: 'Meta: Llama 3.3 70B',            context: 131072 },
+  { id: 'meta-llama/llama-3.2-3b-instruct:free',        name: 'Meta: Llama 3.2 3B',             context: 131072 },
+  { id: 'google/gemma-4-31b-it:free',                   name: 'Google: Gemma 4 31B',            context: 131072 },
+  { id: 'google/gemma-4-26b-a4b-it:free',               name: 'Google: Gemma 4 26B A4B',        context: 131072 },
+  { id: 'google/gemma-3-27b-it:free',                   name: 'Google: Gemma 3 27B',            context: 131072 },
+  { id: 'google/gemma-3-12b-it:free',                   name: 'Google: Gemma 3 12B',            context: 131072 },
+  { id: 'google/gemma-3-4b-it:free',                    name: 'Google: Gemma 3 4B',             context: 131072 },
+  { id: 'google/gemma-3n-e4b-it:free',                  name: 'Google: Gemma 3n 4B',            context: 131072 },
+  { id: 'google/gemma-3n-e2b-it:free',                  name: 'Google: Gemma 3n 2B',            context: 131072 },
+  { id: 'nvidia/nemotron-3-nano-30b-a3b:free',          name: 'NVIDIA: Nemotron 3 Nano 30B',    context: 131072 },
+  { id: 'nvidia/nemotron-nano-9b-v2:free',              name: 'NVIDIA: Nemotron Nano 9B V2',    context: 131072 },
+  { id: 'nvidia/nemotron-nano-12b-v2-vl:free',          name: 'NVIDIA: Nemotron Nano 12B VL',   context: 131072 },
+  { id: 'nvidia/nemotron-3-nano-omni:free',             name: 'NVIDIA: Nemotron 3 Nano Omni',   context: 131072 },
+  { id: 'nvidia/llama-nemotron-super-70b-instruct:free',name: 'NVIDIA: Nemotron Super 70B',     context: 131072 },
+  { id: 'nvidia/llama-nemotron-embed-vl-1b-v2:free',   name: 'NVIDIA: Nemotron Embed VL 1B',   context: 4096   },
+  { id: 'qwen/qwen3-coder-480b-a35b:free',              name: 'Qwen: Qwen3 Coder 480B',         context: 131072 },
+  { id: 'qwen/qwen3-235b-a22b:free',                    name: 'Qwen3 235B A22B',                context: 131072 },
+  { id: 'qwen/qwen3-next-80b-a3b:free',                 name: 'Qwen: Qwen3 Next 80B',           context: 131072 },
+  { id: 'nous/hermes-3-405b-instruct:free',             name: 'Nous: Hermes 3 405B',            context: 131072 },
+  { id: 'liquid/lfm2.5-1.2b-thinking:free',             name: 'LiquidAI: LFM2.5 1.2B Thinking', context: 32768  },
+  { id: 'liquid/lfm2.5-1.2b-instruct:free',             name: 'LiquidAI: LFM2.5 1.2B Instruct', context: 32768  },
+  { id: 'poolside/laguna-m1:free',                      name: 'Poolside: Laguna M.1',           context: 131072 },
+  { id: 'poolside/laguna-xs2:free',                     name: 'Poolside: Laguna XS.2',          context: 131072 },
+  { id: 'baidu/qianfan-ocr-fast:free',                  name: 'Baidu: Qianfan OCR Fast',        context: 4096   },
+  { id: 'venice-ai/venice-uncensored:free',             name: 'Venice: Uncensored',             context: 131072 },
+  { id: 'openrouter/auto',                              name: 'Free Models Router',             context: 128000 },
 ];
 
-// ── State ──────────────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────
 const state = {
   sessions:       {},
   currentId:      null,
   streaming:      false,
   pendingFiles:   [],
   searchEnabled:  false,
-  models:         [],          // populated dynamically
+  models:         [],
   modelsLoaded:   false,
 };
 
-// ── DOM refs ───────────────────────────────────────────────────
+// ── DOM refs ───────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const DOM = {
   sidebar:       () => document.querySelector('.sidebar'),
@@ -74,6 +93,7 @@ const DOM = {
   keyInput:      () => $('apiKey'),
   keyStatus:     () => $('keyStatus'),
   fileInput:     () => $('fileInput'),
+  attachBtn:     () => $('attachBtn'),
   fileStrip:     () => $('fileStrip'),
   tokenFill:     () => $('tokenFill'),
   tokenLabel:    () => $('tokenLabel'),
@@ -84,24 +104,26 @@ const DOM = {
   topbarBadge:   () => $('topbarBadge'),
   historyList:   () => $('historyList'),
   searchToggle:  () => $('searchToggle'),
+  newChatBtn:    () => $('newChatBtn'),
+  sidebarToggle: () => $('sidebarToggle'),  // collapse btn (in sidebar)
+  sidebarOpen:   () => $('sidebarOpen'),    // open btn (in topbar)
   toast:         () => $('toast'),
   themeToggle:   () => $('themeToggle'),
 };
 
-// ── Utilities ──────────────────────────────────────────────────
+// ── Utilities ────────────────────────────────────────────
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 function showToast(msg, type = '', duration = 3200) {
   const t = DOM.toast();
   if (!t) return;
-  t.textContent  = msg;
-  t.className    = `toast${type ? ' ' + type : ''} show`;
+  t.textContent = msg;
+  t.className   = `toast${type ? ' ' + type : ''} show`;
   clearTimeout(t._tid);
   if (msg) t._tid = setTimeout(() => t.classList.remove('show'), duration);
 }
 
 function getModelCtx(modelId) {
-  // First check live models list (may have accurate context from OpenRouter)
   const live = state.models.find(m => m.id === modelId);
   if (live?.context) return live.context;
   return MODEL_CAPS[modelId] || MODEL_CAPS['default'];
@@ -115,7 +137,7 @@ function escHtml(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Dark / light theme ─────────────────────────────────────────
+// ── Dark / light theme ──────────────────────────────────
 (function initTheme() {
   const saved = localStorage.getItem('theme');
   const pref  = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -131,7 +153,7 @@ function toggleTheme() {
   if (btn) btn.setAttribute('aria-label', `Switch to ${cur} mode`);
 }
 
-// ── Markdown renderer ──────────────────────────────────────────
+// ── Markdown renderer ───────────────────────────────────
 function renderMd(text) {
   let s = text || '';
 
@@ -225,7 +247,7 @@ window.copyCode = function(id) {
   navigator.clipboard.writeText(el.textContent).then(() => showToast('Copied!', 'success', 1800));
 };
 
-// ── Dynamic model loading ──────────────────────────────────────
+// ── Dynamic model loading ─────────────────────────────────
 async function loadModels() {
   const sel = DOM.modelSelect();
   if (!sel) return;
@@ -234,13 +256,21 @@ async function loadModels() {
     const res  = await fetch(`${PROXY_URL}/models`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const list = data.data || [];
+    const list = (data.data || []).filter(m => m.id);
 
     if (list.length) {
-      state.models = list;
+      state.models     = list;
       state.modelsLoaded = true;
+
+      // Register vision-capable models with AppOCR so images route correctly
+      if (window.AppOCR) {
+        list.forEach(m => {
+          if (m.capabilities?.vision) window.AppOCR.registerVisionModel(m.id);
+        });
+      }
+
       populateModelSelect(list);
-      console.info(`[claude-chat] Loaded ${list.length} free models from OpenRouter`);
+      console.info(`[claude-chat] Loaded ${list.length} models from OpenRouter`);
       return;
     }
   } catch (e) {
@@ -253,55 +283,50 @@ async function loadModels() {
 }
 
 function populateModelSelect(models) {
-  const sel    = DOM.modelSelect();
+  const sel = DOM.modelSelect();
   if (!sel) return;
-  const saved  = sel.value || localStorage.getItem('selectedModel') || '';
+  const saved = sel.value || localStorage.getItem('selectedModel') || '';
 
   // Group by provider prefix
   const groups = {};
   models.forEach(m => {
-    const provider = m.name.split(':')[0].split('/')[0].split(' ')[0] || 'Other';
+    const provider = (m.name || m.id).split(':')[0].split('/')[0].split(' ')[0] || 'Other';
     (groups[provider] = groups[provider] || []).push(m);
   });
 
   sel.innerHTML = '';
 
-  // Add "Free Models Router" first if present
+  // Free Models Router first
   const router = models.find(m => m.id === 'openrouter/auto');
   if (router) {
-    const opt = document.createElement('option');
+    const opt       = document.createElement('option');
     opt.value       = router.id;
-    opt.textContent = '⚡ ' + router.name;
+    opt.textContent = '⚡ ' + (router.name || 'Free Models Router');
     sel.appendChild(opt);
   }
 
   Object.keys(groups).sort().forEach(provider => {
-    const grp = document.createElement('optgroup');
-    grp.label = provider;
+    const grp   = document.createElement('optgroup');
+    grp.label   = provider;
     groups[provider]
       .filter(m => m.id !== 'openrouter/auto')
       .forEach(m => {
-        const opt = document.createElement('option');
+        const opt       = document.createElement('option');
         opt.value       = m.id;
-        opt.textContent = m.name;
-        // Mark vision/OCR capable models
-        if (window.AppOCR?.isMultimodal(m.id)) {
-          opt.textContent += m.capabilities?.vision ? ' 👁' : ' 📄';
-        }
+        const cap       = window.AppOCR?.capabilityLabel(m.id);
+        opt.textContent = (m.name || m.id) + (cap ? ` [${cap}]` : '');
         grp.appendChild(opt);
       });
     if (grp.children.length) sel.appendChild(grp);
   });
 
   // Restore saved selection
-  if (saved && [...sel.options].some(o => o.value === saved)) {
-    sel.value = saved;
-  }
+  if (saved && [...sel.options].some(o => o.value === saved)) sel.value = saved;
 
   updateTopbarBadge();
 }
 
-// ── Sessions ───────────────────────────────────────────────────
+// ── Sessions ───────────────────────────────────────────────
 function newSession() {
   const id = genId();
   state.sessions[id] = { id, title: 'New chat', messages: [], tokenCount: 0, createdAt: Date.now() };
@@ -314,25 +339,30 @@ function switchSession(id) {
   renderMessages();
   renderHistory();
   updateStats();
-  DOM.topbarTitle()?.textContent && (DOM.topbarTitle().textContent = state.sessions[id].title || 'New chat');
+  const tt = DOM.topbarTitle();
+  if (tt) tt.textContent = state.sessions[id].title || 'New chat';
 }
 
 function currentSession() { return state.sessions[state.currentId]; }
 
-// ── History sidebar ────────────────────────────────────────────
+// ── History sidebar ─────────────────────────────────────────
 function renderHistory() {
   const list = DOM.historyList();
   if (!list) return;
   const sessions = Object.values(state.sessions).sort((a,b) => b.createdAt - a.createdAt);
   list.innerHTML = sessions.map(s =>
     `<div class="history-item${s.id === state.currentId ? ' active' : ''}"
-          onclick="switchSession('${s.id}')"
+          data-sid="${s.id}"
           title="${escHtml(s.title)}">${escHtml(s.title)}</div>`
   ).join('');
+  // Delegate clicks
+  list.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', () => switchSession(el.dataset.sid));
+  });
 }
 window.switchSession = switchSession;
 
-// ── Message rendering ──────────────────────────────────────────
+// ── Message rendering ───────────────────────────────────────
 function renderMessages() {
   const wrap = DOM.messages();
   if (!wrap) return;
@@ -373,7 +403,7 @@ window.useSuggestion = function(text) {
 function renderMessage(msg) {
   const isUser = msg.role === 'user';
   const time   = msg.ts ? new Date(msg.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
-  const role   = isUser ? 'You' : (msg.model || 'AI');
+  const role   = isUser ? 'You' : (msg.model?.split('/').pop()?.replace(':free','') || 'AI');
 
   let bodyHtml = '';
   if (msg.imageUrls?.length) {
@@ -387,9 +417,8 @@ function renderMessage(msg) {
     ).join('');
   }
 
-  const content = isUser ? `<p>${escHtml(msg.content || '')}</p>` : renderMd(msg.content || '');
-  const webBadge = msg.searched
-    ? `<span class="web-badge">🌐 web</span>` : '';
+  const content  = isUser ? `<p>${escHtml(msg.content || '')}</p>` : renderMd(msg.content || '');
+  const webBadge = msg.searched ? `<span class="web-badge">🌐 web</span>` : '';
 
   return `<div class="msg ${isUser ? 'user' : 'assistant'}" data-id="${msg.id}">
     <div class="msg-avatar">${isUser ? 'U' : 'AI'}</div>
@@ -418,22 +447,22 @@ window.copyMsg = function(id) {
   navigator.clipboard.writeText(msg.content || '').then(() => showToast('Copied!', 'success', 1800));
 };
 
-// ── Stats + token bar ──────────────────────────────────────────
+// ── Stats + token bar ──────────────────────────────────────
 function updateStats() {
-  const sess = currentSession();
+  const sess     = currentSession();
   if (!sess) return;
   const msgCount = sess.messages.length;
   const tokens   = sess.tokenCount || 0;
   const modelId  = DOM.modelSelect()?.value || '';
   const ctxLimit = getModelCtx(modelId);
   const pct      = Math.min(100, (tokens / ctxLimit) * 100).toFixed(1);
+  const ctxK     = Math.round(ctxLimit / 1000);
 
-  DOM.statMsgs()?.textContent    && (DOM.statMsgs().textContent   = msgCount);
-  DOM.statTokens()?.textContent  && (DOM.statTokens().textContent = tokens.toLocaleString());
-  DOM.statModel()?.textContent   && (DOM.statModel().textContent  = modelId.split('/').pop()?.replace(':free','') || '—');
-  if (DOM.tokenFill()) DOM.tokenFill().style.width = pct + '%';
-  const ctxK = Math.round(ctxLimit / 1000);
-  if (DOM.tokenLabel()) DOM.tokenLabel().textContent = `${tokens.toLocaleString()} / ${ctxK}k ctx`;
+  const sm = DOM.statMsgs();    if (sm) sm.textContent    = msgCount;
+  const st = DOM.statTokens();  if (st) st.textContent    = tokens.toLocaleString();
+  const smod = DOM.statModel(); if (smod) smod.textContent = modelId.split('/').pop()?.replace(':free','') || '—';
+  const tf = DOM.tokenFill();   if (tf) tf.style.width    = pct + '%';
+  const tl = DOM.tokenLabel();  if (tl) tl.textContent    = `${tokens.toLocaleString()} / ${ctxK}k ctx`;
 }
 
 function updateTopbarBadge() {
@@ -446,12 +475,11 @@ function updateTopbarBadge() {
   badge.title       = modelId;
 }
 
-// ── File handling ──────────────────────────────────────────────
+// ── File handling ───────────────────────────────────────────
 function handleFiles(fileList) {
   [...fileList].forEach(async file => {
     const lower = file.name.toLowerCase();
 
-    // Image
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = e => {
@@ -462,7 +490,6 @@ function handleFiles(fileList) {
       return;
     }
 
-    // CSV / Excel
     if (window.AppFiles && (lower.endsWith('.csv') || lower.endsWith('.xlsx') || lower.endsWith('.xls'))) {
       showToast('Parsing ' + file.name + '…');
       const result = await window.AppFiles.parseStructuredFile(file);
@@ -474,7 +501,6 @@ function handleFiles(fileList) {
       return;
     }
 
-    // Plain text / PDF-text / other
     const reader = new FileReader();
     reader.onload = e => {
       state.pendingFiles.push({ type: 'text', name: file.name, content: e.target.result });
@@ -493,23 +519,28 @@ function renderFileStrip() {
     strip.hidden    = true;
     return;
   }
-  strip.hidden  = false;
+  strip.hidden    = false;
   strip.innerHTML = state.pendingFiles.map((f, i) => {
-    const icon = f.type === 'image' ? `<img src="${f.dataUrl}" alt="">` : '📎';
+    const imgTag = f.type === 'image'
+      ? `<img src="${f.dataUrl}" alt="" width="22" height="22" style="border-radius:var(--r-sm);object-fit:cover;">`
+      : '<span>📎</span>';
     return `<div class="file-preview">
-      ${typeof icon === 'string' && icon.startsWith('<img') ? icon : `<span>${icon}</span>`}
+      ${imgTag}
       <span class="file-preview-name">${escHtml(f.name)}</span>
-      <button class="file-remove-btn" onclick="removeFile(${i})" aria-label="Remove">×</button>
+      <button class="file-remove-btn" data-idx="${i}" aria-label="Remove ${escHtml(f.name)}">×</button>
     </div>`;
   }).join('');
+
+  // Delegate remove clicks
+  strip.querySelectorAll('.file-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.pendingFiles.splice(Number(btn.dataset.idx), 1);
+      renderFileStrip();
+    });
+  });
 }
 
-window.removeFile = function(i) {
-  state.pendingFiles.splice(i, 1);
-  renderFileStrip();
-};
-
-// ── Build API messages ─────────────────────────────────────────
+// ── Build API messages ──────────────────────────────────────
 function buildApiMessages(sess, sysPrompt, userText) {
   const msgs = [];
 
@@ -517,12 +548,10 @@ function buildApiMessages(sess, sysPrompt, userText) {
     msgs.push({ role: 'system', content: sysPrompt.trim() });
   }
 
-  // Add history (skip system messages already added)
   sess.messages
     .filter(m => m.role !== 'system')
     .forEach(m => msgs.push({ role: m.role, content: m.content }));
 
-  // Current user turn (text + table/text file snippets)
   let userContent = userText;
   state.pendingFiles
     .filter(f => f.type === 'table' || f.type === 'text')
@@ -538,7 +567,7 @@ function buildApiMessages(sess, sysPrompt, userText) {
   return msgs;
 }
 
-// ── Send message ───────────────────────────────────────────────
+// ── Send message ───────────────────────────────────────────
 async function sendMessage() {
   if (state.streaming) return;
 
@@ -546,29 +575,29 @@ async function sendMessage() {
   const userText = ta?.value?.trim() || '';
   if (!userText && !state.pendingFiles.length) return;
 
-  const model    = DOM.modelSelect()?.value || FALLBACK_MODELS[0].id;
+  const model     = DOM.modelSelect()?.value || FALLBACK_MODELS[0].id;
   const sysPrompt = DOM.sysPrompt()?.value || '';
-  const sess     = currentSession();
+  const sess      = currentSession();
   if (!sess) return;
 
-  // Disable UI
   state.streaming = true;
-  if (DOM.sendBtn()) DOM.sendBtn().disabled = true;
-  if (ta) { ta.value = ''; autoResizeTextarea(ta); }
+  const btn = DOM.sendBtn();
+  if (btn) btn.disabled = true;
+  if (ta)  { ta.value = ''; autoResizeTextarea(ta); }
+  if (btn) btn.disabled = true;
 
-  // Record image URLs for display
-  const imageUrls  = state.pendingFiles.filter(f=>f.type==='image').map(f=>f.dataUrl);
-  const fileNames  = state.pendingFiles.filter(f=>f.type!=='image').map(f=>f.name);
+  const imageUrls = state.pendingFiles.filter(f => f.type === 'image').map(f => f.dataUrl);
+  const fileNames = state.pendingFiles.filter(f => f.type !== 'image').map(f => f.name);
 
-  // Save user message
   const userMsg = {
     id: genId(), role: 'user', content: userText,
-    ts: Date.now(), imageUrls, fileNames, model
+    ts: Date.now(), imageUrls, fileNames, model,
   };
   sess.messages.push(userMsg);
   if (sess.messages.length === 1) {
     sess.title = userText.slice(0, 40) || 'New chat';
-    DOM.topbarTitle() && (DOM.topbarTitle().textContent = sess.title);
+    const tt = DOM.topbarTitle();
+    if (tt) tt.textContent = sess.title;
   }
   sess.tokenCount = (sess.tokenCount || 0) + approxTokens(userText);
   renderMessages();
@@ -576,58 +605,63 @@ async function sendMessage() {
   // Build API messages
   let apiMessages = buildApiMessages(sess, sysPrompt, userText);
 
-  // Inject OCR / vision payloads
+  // OCR / vision payloads
   if (window.AppOCR) {
     const { messages, hasImages } =
       await window.AppOCR.preparePayload(model, apiMessages, state.pendingFiles, userText);
     apiMessages = messages;
     if (!hasImages && imageUrls.length) {
-      // Text-only model: append filenames as text note
       const last = apiMessages[apiMessages.length - 1];
-      last.content += `\n\n[User attached image(s): ${imageUrls.map((_, i) => `image_${i+1}`).join(', ')}]`;
+      if (typeof last.content === 'string') {
+        last.content += `\n\n[User attached image(s): ${imageUrls.map((_, i) => `image_${i+1}`).join(', ')} — this model does not support vision]`;
+      }
     }
   }
 
   // Web search context
   let searched = false;
-  if (window.AppSearch && (state.searchEnabled || window.AppSearch.needsSearch(userText))) {
-    showToast('🔍 Searching the web…', '', 5000);
-    const { contextBlock, searched: didSearch } = state.searchEnabled
-      ? await window.AppSearch.forceSearch(userText)
-      : await window.AppSearch.prepareContext(userText);
-    if (didSearch && contextBlock) {
-      apiMessages[apiMessages.length - 1].content =
-        contextBlock + '\n\n---\n\nUser question: ' + apiMessages[apiMessages.length - 1].content;
-      searched = true;
+  if (window.AppSearch) {
+    const doSearch = state.searchEnabled || window.AppSearch.needsSearch?.(userText);
+    if (doSearch) {
+      showToast('🔍 Searching the web…', '', 5000);
+      const result = state.searchEnabled
+        ? await window.AppSearch.forceSearch(userText)
+        : await window.AppSearch.prepareContext(userText);
+      if (result?.contextBlock) {
+        const last = apiMessages[apiMessages.length - 1];
+        if (typeof last.content === 'string') {
+          last.content = result.contextBlock + '\n\n---\n\nUser question: ' + last.content;
+        }
+        searched = true;
+      }
+      showToast('');
     }
-    showToast('');
   }
 
-  // Clear pending files
+  // Clear pending files AFTER building messages
   state.pendingFiles = [];
   renderFileStrip();
 
-  // Add streaming placeholder
+  // Streaming placeholder
   const aiMsgId = genId();
-  const aiMsg = { id: aiMsgId, role: 'assistant', content: '', ts: Date.now(), model, searched };
+  const aiMsg   = { id: aiMsgId, role: 'assistant', content: '', ts: Date.now(), model, searched };
   sess.messages.push(aiMsg);
   renderMessages();
 
-  // Get the live streaming element
   const msgEl = document.querySelector(`[data-id="${aiMsgId}"] .msg-content`);
   if (msgEl) msgEl.innerHTML = '<span class="streaming-cursor"></span>';
 
   try {
     const resp = await fetch(`${PROXY_URL}/chat`, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body:    JSON.stringify({
         model,
-        messages: apiMessages,
-        stream: true,
+        messages:    apiMessages,
+        stream:      true,
         temperature: 0.7,
-        max_tokens: 4096,
-      })
+        max_tokens:  4096,
+      }),
     });
 
     if (!resp.ok) {
@@ -642,46 +676,49 @@ async function sendMessage() {
     let   buffer  = '';
     let   full    = '';
 
-    while (true) {
+    outer: while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop();
+      buffer = lines.pop(); // keep incomplete line
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const data = line.slice(6).trim();
-        if (data === '[DONE]') break;
+        if (data === '[DONE]') break outer;
         try {
-          const chunk  = JSON.parse(data);
-          const delta  = chunk.choices?.[0]?.delta?.content || '';
-          full        += delta;
-          if (msgEl) msgEl.innerHTML = renderMd(full) + '<span class="streaming-cursor"></span>';
-          DOM.messages().scrollTop = DOM.messages().scrollHeight;
-        } catch {}
+          const chunk = JSON.parse(data);
+          const delta = chunk.choices?.[0]?.delta?.content || '';
+          full += delta;
+          if (msgEl) {
+            msgEl.innerHTML = renderMd(full) + '<span class="streaming-cursor"></span>';
+            DOM.messages().scrollTop = DOM.messages().scrollHeight;
+          }
+        } catch { /* malformed SSE chunk — skip */ }
       }
     }
 
-    // Finalise
+    // Finalise — remove streaming cursor
     aiMsg.content = full;
     if (msgEl) msgEl.innerHTML = renderMd(full);
     sess.tokenCount = (sess.tokenCount || 0) + approxTokens(full);
 
   } catch (err) {
     aiMsg.content = `⚠️ ${err.message || 'Failed to fetch'}`;
-    if (msgEl) msgEl.innerHTML = `<span style="color:var(--tx3)">⚠️ ${escHtml(err.message || 'Failed to fetch')}</span>`;
+    if (msgEl) msgEl.innerHTML =
+      `<span style="color:var(--tx3)">⚠️ ${escHtml(err.message || 'Failed to fetch')}</span>`;
     showToast(err.message || 'Request failed', 'error');
   }
 
   state.streaming = false;
-  if (DOM.sendBtn()) DOM.sendBtn().disabled = false;
+  if (DOM.sendBtn()) DOM.sendBtn().disabled = !DOM.textarea()?.value?.trim();
   renderHistory();
   updateStats();
   saveState();
 }
 
-// ── Export chat ────────────────────────────────────────────────
+// ── Export chat ────────────────────────────────────────────
 function exportChat() {
   const sess = currentSession();
   if (!sess?.messages?.length) { showToast('Nothing to export', 'error'); return; }
@@ -693,7 +730,7 @@ function exportChat() {
     ...sess.messages.map(m => {
       const role = m.role === 'user' ? '**You**' : `**AI (${m.model || 'Assistant'})**`;
       return `${role}\n\n${m.content}\n\n---`;
-    })
+    }),
   ];
 
   const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
@@ -705,14 +742,13 @@ function exportChat() {
   showToast('Chat exported!', 'success');
 }
 
-// ── Persistence ────────────────────────────────────────────────
+// ── Persistence ────────────────────────────────────────────
 function saveState() {
   try {
-    const toSave = {
+    localStorage.setItem('cc_state', JSON.stringify({
       sessions:  state.sessions,
       currentId: state.currentId,
-    };
-    localStorage.setItem('cc_state', JSON.stringify(toSave));
+    }));
   } catch {}
 }
 
@@ -728,13 +764,13 @@ function loadState() {
   } catch {}
 }
 
-// ── Textarea auto-resize ───────────────────────────────────────
+// ── Textarea auto-resize ──────────────────────────────────
 function autoResizeTextarea(ta) {
   ta.style.height = 'auto';
   ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
 }
 
-// ── API key validation ─────────────────────────────────────────
+// ── API key validation ────────────────────────────────────
 function validateKey(key) {
   const status = DOM.keyStatus();
   if (!status) return;
@@ -749,44 +785,46 @@ function validateKey(key) {
   }
 }
 
-// ── Init ───────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────
 async function init() {
   loadState();
 
-  // Ensure at least one session
   if (!Object.keys(state.sessions).length || !state.currentId) {
     state.currentId = newSession();
   }
 
-  // Restore API key
   const savedKey = localStorage.getItem('cc_key');
   if (savedKey && DOM.keyInput()) DOM.keyInput().value = savedKey;
 
-  // Load models dynamically (falls back to FALLBACK_MODELS automatically)
   showToast('Loading models…', '', 5000);
   await loadModels();
   showToast('');
 
-  // Wire up model select change
+  // Model select
   DOM.modelSelect()?.addEventListener('change', () => {
     localStorage.setItem('selectedModel', DOM.modelSelect().value);
     updateTopbarBadge();
     updateStats();
   });
 
-  // Wire up send
+  // Send
   DOM.sendBtn()?.addEventListener('click', sendMessage);
   DOM.textarea()?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
-  DOM.textarea()?.addEventListener('input', e => autoResizeTextarea(e.target));
+  DOM.textarea()?.addEventListener('input', e => {
+    autoResizeTextarea(e.target);
+    // Re-enable send button based on current value
+    const btn = DOM.sendBtn();
+    if (btn) btn.disabled = !e.target.value.trim() && !state.pendingFiles.length;
+  });
 
-  // Attach btn
+  // Attach — wire by id (set in index.html Step 1)
   DOM.fileInput()?.addEventListener('change', e => {
     handleFiles(e.target.files);
     e.target.value = '';
   });
-  document.querySelector('.attach-btn')?.addEventListener('click', () => DOM.fileInput()?.click());
+  DOM.attachBtn()?.addEventListener('click', () => DOM.fileInput()?.click());
 
   // API key
   DOM.keyInput()?.addEventListener('input', e => validateKey(e.target.value.trim()));
@@ -795,36 +833,42 @@ async function init() {
     if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
   });
 
-  // New chat
-  document.querySelector('.new-chat-btn')?.addEventListener('click', () => {
+  // New chat — wire by id (set in index.html Step 1)
+  DOM.newChatBtn()?.addEventListener('click', () => {
     state.currentId = newSession();
     switchSession(state.currentId);
     saveState();
   });
 
-  // Sidebar toggle
-  document.querySelector('#sidebarToggle')?.addEventListener('click', () => {
+  // Sidebar collapse (inside sidebar)
+  DOM.sidebarToggle()?.addEventListener('click', () => {
     DOM.sidebar()?.classList.toggle('collapsed');
   });
 
-  // Theme toggle
+  // Sidebar open (topbar hamburger) — id="sidebarOpen" set in Step 1
+  DOM.sidebarOpen()?.addEventListener('click', () => {
+    DOM.sidebar()?.classList.remove('collapsed');
+  });
+
+  // Theme
   DOM.themeToggle()?.addEventListener('click', toggleTheme);
 
-  // Search toggle
+  // Search toggle — also updates data-search-active for CSS green-dot
   DOM.searchToggle()?.addEventListener('click', () => {
     state.searchEnabled = !state.searchEnabled;
     const btn = DOM.searchToggle();
     if (btn) {
-      btn.setAttribute('aria-pressed', String(state.searchEnabled));
+      btn.setAttribute('aria-pressed',        String(state.searchEnabled));
+      btn.setAttribute('data-search-active',  String(state.searchEnabled));
       btn.title = state.searchEnabled ? 'Web search ON' : 'Web search OFF';
     }
     showToast(state.searchEnabled ? '🌐 Web search enabled' : 'Web search off', '', 2000);
   });
 
   // Export
-  document.querySelector('#exportBtn')?.addEventListener('click', exportChat);
+  $('exportBtn')?.addEventListener('click', exportChat);
 
-  // Drag-and-drop on input box
+  // Drag-and-drop
   const inputBox = document.querySelector('.input-box');
   inputBox?.addEventListener('dragover',  e => { e.preventDefault(); inputBox.classList.add('drag-over'); });
   inputBox?.addEventListener('dragleave', ()  => inputBox.classList.remove('drag-over'));
@@ -834,7 +878,6 @@ async function init() {
     if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
   });
 
-  // Render
   renderMessages();
   renderHistory();
   updateStats();
