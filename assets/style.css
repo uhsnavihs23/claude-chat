@@ -14,8 +14,14 @@
   --sp1:.25rem; --sp2:.5rem;  --sp3:.75rem; --sp4:1rem;
   --sp5:1.25rem;--sp6:1.5rem; --sp8:2rem;   --sp10:2.5rem;
 
-  /* Border radius */
-  --r-sm:.3rem; --r-md:.5rem; --r-lg:.8rem; --r-xl:1.1rem; --r-full:9999px;
+  /* Border radius — short names (used throughout CSS)
+     AND long aliases (used by app.js inline styles) */
+  --r-sm:.3rem;  --r-md:.5rem;  --r-lg:.8rem;  --r-xl:1.1rem; --r-full:9999px;
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-full: var(--r-full);
 
   /* Motion */
   --ease:   cubic-bezier(0.16, 1, 0.3, 1);
@@ -162,6 +168,27 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
   width: 0; min-width: 0; padding: 0;
   opacity: 0; pointer-events: none; border: none;
 }
+
+/* Topbar hamburger: visible only when sidebar is collapsed */
+#sidebarOpen {
+  display: none;
+}
+.sidebar.collapsed ~ .main #sidebarOpen,
+.sidebar.collapsed + .main #sidebarOpen {
+  display: flex;
+}
+
+/* Mobile backdrop — appears behind sidebar when open on small screens */
+.sidebar-backdrop {
+  display:    none;
+  position:   fixed;
+  inset:      0;
+  background: rgba(0,0,0,0.4);
+  z-index:    49;
+  animation:  fadeIn .2s var(--ease);
+}
+.sidebar-backdrop.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .sidebar-header {
   display:         flex;
@@ -496,7 +523,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
 .msg-role           { font-size: var(--text-xs); font-weight: 600; color: var(--tx3); text-transform: uppercase; letter-spacing: .06em; }
 .msg-time           { font-size: var(--text-xs); color: var(--tx3); font-variant-numeric: tabular-nums; }
 
-/* ── Web search badge (Step 6) ── */
+/* ── Web search badge ── */
 .web-badge {
   display:       inline-flex;
   align-items:   center;
@@ -578,7 +605,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
 .msg-content pre .copy-code-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
 .msg-content pre code           { display: block; padding: var(--sp3) var(--sp4); color: var(--ptx); background: none; border: none; overflow-x: auto; white-space: pre; font-size: .8em; line-height: 1.7; }
 
-/* ── GFM Tables (Step 7) ── */
+/* ── GFM Tables ── */
 .md-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -605,7 +632,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
 .msg-content th            { background: var(--sfo); font-weight: 600; }
 .msg-content tbody tr:hover { background: var(--sfo); }
 
-/* ── Task list items (Step 7) ── */
+/* ── Task list items ── */
 .task-item {
   list-style:  none;
   display:     flex;
@@ -646,7 +673,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
   margin-bottom: var(--sp2);
 }
 
-/* ── CSV download button (Step 4) ── */
+/* ── CSV download button ── */
 .csv-download-btn {
   display:       inline-flex;
   align-items:   center;
@@ -766,10 +793,14 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
 }
 .chat-textarea::placeholder { color: var(--tx3); }
 
-/* ── Web search toggle (Step 6) ── */
+/* ── Web search toggle ──
+   Green dot activates via BOTH aria-pressed="true" AND data-search-active="true"
+   (app.js sets both; CSS reacts to either) */
 .search-toggle-btn { position: relative; transition: color 180ms, opacity 180ms; }
-.search-toggle-btn[aria-pressed="true"]  { color: var(--ac); }
-.search-toggle-btn[aria-pressed="false"] { color: var(--tx2); opacity: 0.4; }
+.search-toggle-btn[aria-pressed="true"],
+.search-toggle-btn[data-search-active="true"]  { color: var(--ac); }
+.search-toggle-btn[aria-pressed="false"],
+.search-toggle-btn[data-search-active="false"] { color: var(--tx2); opacity: 0.4; }
 .search-toggle-btn::after {
   content:       '';
   position:      absolute;
@@ -778,10 +809,12 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
   width:         5px;
   height:        5px;
   border-radius: 50%;
-  background:    var(--ac);
+  background:    var(--tx2);
+  opacity:       0.3;
   transition:    background 180ms, opacity 180ms;
 }
-.search-toggle-btn[aria-pressed="false"]::after { background: var(--tx2); opacity: 0.3; }
+.search-toggle-btn[aria-pressed="true"]::after,
+.search-toggle-btn[data-search-active="true"]::after  { background: var(--ac); opacity: 1; }
 
 /* ── Send button ── */
 .send-btn {
@@ -834,6 +867,10 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
@@ -845,6 +882,7 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
 
 /* ═══ RESPONSIVE ══════════════════════════════════════════════ */
 @media (max-width: 640px) {
+  /* On mobile the sidebar overlays the content */
   .sidebar {
     position:   fixed;
     top:        0;
@@ -852,8 +890,19 @@ h1,h2,h3,h4,h5,h6 { text-wrap: balance; }
     height:     100dvh;
     box-shadow: var(--sh3);
     z-index:    50;
+    /* When open on mobile, always show the hamburger in topbar
+       so user can collapse — handled by JS adding .collapsed */
   }
-  .sidebar.collapsed  { width: 0; min-width: 0; padding: 0; }
+  /* On mobile, sidebar starts collapsed (JS sets this on init) */
+  .sidebar.collapsed  { width: 0; min-width: 0; padding: 0; transform: translateX(-100%); }
+  /* When sidebar is open on mobile, show backdrop */
+  .sidebar:not(.collapsed) ~ .main .sidebar-backdrop,
+  .sidebar:not(.collapsed) + .main .sidebar-backdrop {
+    display: block;
+  }
+  /* On mobile, ALWAYS show the hamburger open button */
+  #sidebarOpen { display: flex !important; }
+
   .suggestions        { flex-direction: column; }
   .suggestion-chip    { text-align: left; }
   .msg                { max-width: 100%; }
