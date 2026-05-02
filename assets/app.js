@@ -1,14 +1,14 @@
-// assets/app.js  — claude-chat v2.2
+// assets/app.js  — claude-chat v2.3
 // Depends on: assets/files.js, assets/search.js, assets/ocr.js (loaded before this)
 
 (() => {
 'use strict';
 
-// ── Config ────────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────
 const PROXY_URL = window.APP_CONFIG?.PROXY_URL
   || 'https://dark-feather-5042.insightfulscroll.workers.dev';
 
-// ── Model caps (context window in tokens) ────────────────────
+// ── Model caps (context window in tokens) ──────────────────────────────────
 const MODEL_CAPS = {
   'default':                                         128000,
   'google/gemma-4-31b-it:free':                      131072,
@@ -40,7 +40,7 @@ const MODEL_CAPS = {
   'venice-ai/venice-uncensored:free':                131072,
 };
 
-// ── Fallback model list (used if /models fetch fails) ────────────
+// ── Fallback model list (used if /models fetch fails) ────────────────────────
 const FALLBACK_MODELS = [
   { id: 'meta-llama/llama-3.3-70b-instruct:free',       name: 'Meta: Llama 3.3 70B',            context: 131072 },
   { id: 'meta-llama/llama-3.2-3b-instruct:free',        name: 'Meta: Llama 3.2 3B',             context: 131072 },
@@ -70,7 +70,7 @@ const FALLBACK_MODELS = [
   { id: 'openrouter/auto',                              name: 'Free Models Router',             context: 128000 },
 ];
 
-// ── State ────────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────────────
 const state = {
   sessions:       {},
   currentId:      null,
@@ -81,37 +81,56 @@ const state = {
   modelsLoaded:   false,
 };
 
-// ── DOM refs ───────────────────────────────────────────────
+// ── DOM refs ───────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const DOM = {
-  sidebar:       () => document.querySelector('.sidebar'),
-  messages:      () => $('messages'),
-  textarea:      () => $('chatInput'),
-  sendBtn:       () => $('sendBtn'),
-  modelSelect:   () => $('modelSelect'),
-  sysPrompt:     () => $('sysPrompt'),
-  keyInput:      () => $('apiKey'),
-  keyStatus:     () => $('keyStatus'),
-  fileInput:     () => $('fileInput'),
-  attachBtn:     () => $('attachBtn'),
-  fileStrip:     () => $('fileStrip'),
-  tokenFill:     () => $('tokenFill'),
-  tokenLabel:    () => $('tokenLabel'),
-  statMsgs:      () => $('statMsgs'),
-  statTokens:    () => $('statTokens'),
-  statModel:     () => $('statModel'),
-  topbarTitle:   () => $('topbarTitle'),
-  topbarBadge:   () => $('topbarBadge'),
-  historyList:   () => $('historyList'),
-  searchToggle:  () => $('searchToggle'),
-  newChatBtn:    () => $('newChatBtn'),
-  sidebarToggle: () => $('sidebarToggle'),  // collapse btn (in sidebar)
-  sidebarOpen:   () => $('sidebarOpen'),    // open btn (in topbar)
-  toast:         () => $('toast'),
-  themeToggle:   () => $('themeToggle'),
+  sidebar:         () => document.querySelector('.sidebar'),
+  sidebarBackdrop: () => $('sidebarBackdrop'),
+  messages:        () => $('messages'),
+  textarea:        () => $('chatInput'),
+  sendBtn:         () => $('sendBtn'),
+  modelSelect:     () => $('modelSelect'),
+  sysPrompt:       () => $('sysPrompt'),
+  keyInput:        () => $('apiKey'),
+  keyStatus:       () => $('keyStatus'),
+  fileInput:       () => $('fileInput'),
+  attachBtn:       () => $('attachBtn'),
+  fileStrip:       () => $('fileStrip'),
+  tokenFill:       () => $('tokenFill'),
+  tokenLabel:      () => $('tokenLabel'),
+  statMsgs:        () => $('statMsgs'),
+  statTokens:      () => $('statTokens'),
+  statModel:       () => $('statModel'),
+  topbarTitle:     () => $('topbarTitle'),
+  topbarBadge:     () => $('topbarBadge'),
+  historyList:     () => $('historyList'),
+  searchToggle:    () => $('searchToggle'),
+  newChatBtn:      () => $('newChatBtn'),
+  sidebarToggle:   () => $('sidebarToggle'),  // collapse btn (in sidebar)
+  sidebarOpen:     () => $('sidebarOpen'),    // open btn (in topbar)
+  toast:           () => $('toast'),
+  themeToggle:     () => $('themeToggle'),
 };
 
-// ── Utilities ────────────────────────────────────────────
+// ── Sidebar helpers ─────────────────────────────────────────────────
+function openSidebar() {
+  DOM.sidebar()?.classList.remove('collapsed');
+  DOM.sidebarBackdrop()?.classList.add('active');
+}
+
+function closeSidebar() {
+  DOM.sidebar()?.classList.add('collapsed');
+  DOM.sidebarBackdrop()?.classList.remove('active');
+}
+
+function toggleSidebar() {
+  const sidebar = DOM.sidebar();
+  if (!sidebar) return;
+  if (sidebar.classList.contains('collapsed')) openSidebar();
+  else closeSidebar();
+}
+
+// ── Utilities ──────────────────────────────────────────────────────
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 function showToast(msg, type = '', duration = 3200) {
@@ -137,7 +156,7 @@ function escHtml(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Dark / light theme ──────────────────────────────────
+// ── Dark / light theme ──────────────────────────────────────────────
 (function initTheme() {
   const saved = localStorage.getItem('theme');
   const pref  = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -153,7 +172,7 @@ function toggleTheme() {
   if (btn) btn.setAttribute('aria-label', `Switch to ${cur} mode`);
 }
 
-// ── Markdown renderer ───────────────────────────────────
+// ── Markdown renderer ───────────────────────────────────────────────
 function renderMd(text) {
   let s = text || '';
 
@@ -247,7 +266,7 @@ window.copyCode = function(id) {
   navigator.clipboard.writeText(el.textContent).then(() => showToast('Copied!', 'success', 1800));
 };
 
-// ── Dynamic model loading ─────────────────────────────────
+// ── Dynamic model loading ───────────────────────────────────────────────
 async function loadModels() {
   const sel = DOM.modelSelect();
   if (!sel) return;
@@ -326,7 +345,7 @@ function populateModelSelect(models) {
   updateTopbarBadge();
 }
 
-// ── Sessions ───────────────────────────────────────────────
+// ── Sessions ─────────────────────────────────────────────────────────
 function newSession() {
   const id = genId();
   state.sessions[id] = { id, title: 'New chat', messages: [], tokenCount: 0, createdAt: Date.now() };
@@ -345,7 +364,7 @@ function switchSession(id) {
 
 function currentSession() { return state.sessions[state.currentId]; }
 
-// ── History sidebar ─────────────────────────────────────────
+// ── History sidebar ─────────────────────────────────────────────────────
 function renderHistory() {
   const list = DOM.historyList();
   if (!list) return;
@@ -362,7 +381,7 @@ function renderHistory() {
 }
 window.switchSession = switchSession;
 
-// ── Message rendering ───────────────────────────────────────
+// ── Message rendering ───────────────────────────────────────────────────
 function renderMessages() {
   const wrap = DOM.messages();
   if (!wrap) return;
@@ -447,7 +466,7 @@ window.copyMsg = function(id) {
   navigator.clipboard.writeText(msg.content || '').then(() => showToast('Copied!', 'success', 1800));
 };
 
-// ── Stats + token bar ──────────────────────────────────────
+// ── Stats + token bar ──────────────────────────────────────────────────
 function updateStats() {
   const sess     = currentSession();
   if (!sess) return;
@@ -475,7 +494,7 @@ function updateTopbarBadge() {
   badge.title       = modelId;
 }
 
-// ── File handling ───────────────────────────────────────────
+// ── File handling ────────────────────────────────────────────────────────
 function handleFiles(fileList) {
   [...fileList].forEach(async file => {
     const lower = file.name.toLowerCase();
@@ -540,7 +559,7 @@ function renderFileStrip() {
   });
 }
 
-// ── Build API messages ──────────────────────────────────────
+// ── Build API messages ──────────────────────────────────────────────────
 function buildApiMessages(sess, sysPrompt, userText) {
   const msgs = [];
 
@@ -567,7 +586,7 @@ function buildApiMessages(sess, sysPrompt, userText) {
   return msgs;
 }
 
-// ── Send message ───────────────────────────────────────────
+// ── Send message ───────────────────────────────────────────────────────
 async function sendMessage() {
   if (state.streaming) return;
 
@@ -718,7 +737,7 @@ async function sendMessage() {
   saveState();
 }
 
-// ── Export chat ────────────────────────────────────────────
+// ── Export chat ───────────────────────────────────────────────────────
 function exportChat() {
   const sess = currentSession();
   if (!sess?.messages?.length) { showToast('Nothing to export', 'error'); return; }
@@ -742,7 +761,7 @@ function exportChat() {
   showToast('Chat exported!', 'success');
 }
 
-// ── Persistence ────────────────────────────────────────────
+// ── Persistence ────────────────────────────────────────────────────────
 function saveState() {
   try {
     localStorage.setItem('cc_state', JSON.stringify({
@@ -764,13 +783,13 @@ function loadState() {
   } catch {}
 }
 
-// ── Textarea auto-resize ──────────────────────────────────
+// ── Textarea auto-resize ────────────────────────────────────────────────
 function autoResizeTextarea(ta) {
   ta.style.height = 'auto';
   ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
 }
 
-// ── API key validation ────────────────────────────────────
+// ── API key validation ────────────────────────────────────────────────
 function validateKey(key) {
   const status = DOM.keyStatus();
   if (!status) return;
@@ -785,7 +804,7 @@ function validateKey(key) {
   }
 }
 
-// ── Init ──────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────
 async function init() {
   loadState();
 
@@ -814,12 +833,11 @@ async function init() {
   });
   DOM.textarea()?.addEventListener('input', e => {
     autoResizeTextarea(e.target);
-    // Re-enable send button based on current value
     const btn = DOM.sendBtn();
     if (btn) btn.disabled = !e.target.value.trim() && !state.pendingFiles.length;
   });
 
-  // Attach — wire by id (set in index.html Step 1)
+  // Attach
   DOM.fileInput()?.addEventListener('change', e => {
     handleFiles(e.target.files);
     e.target.value = '';
@@ -833,27 +851,26 @@ async function init() {
     if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
   });
 
-  // New chat — wire by id (set in index.html Step 1)
+  // New chat
   DOM.newChatBtn()?.addEventListener('click', () => {
     state.currentId = newSession();
     switchSession(state.currentId);
     saveState();
   });
 
-  // Sidebar collapse (inside sidebar)
-  DOM.sidebarToggle()?.addEventListener('click', () => {
-    DOM.sidebar()?.classList.toggle('collapsed');
-  });
+  // Sidebar collapse (inside sidebar) — closes sidebar
+  DOM.sidebarToggle()?.addEventListener('click', closeSidebar);
 
-  // Sidebar open (topbar hamburger) — id="sidebarOpen" set in Step 1
-  DOM.sidebarOpen()?.addEventListener('click', () => {
-    DOM.sidebar()?.classList.remove('collapsed');
-  });
+  // Sidebar open (topbar hamburger) — opens sidebar
+  DOM.sidebarOpen()?.addEventListener('click', openSidebar);
+
+  // Backdrop tap — closes sidebar on mobile
+  DOM.sidebarBackdrop()?.addEventListener('click', closeSidebar);
 
   // Theme
   DOM.themeToggle()?.addEventListener('click', toggleTheme);
 
-  // Search toggle — also updates data-search-active for CSS green-dot
+  // Search toggle
   DOM.searchToggle()?.addEventListener('click', () => {
     state.searchEnabled = !state.searchEnabled;
     const btn = DOM.searchToggle();
